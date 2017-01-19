@@ -2,6 +2,6 @@ require "socket"
 require "signal"
 require "./radium/*"
 
-module Push
+module Radium
   Server.new  
 end

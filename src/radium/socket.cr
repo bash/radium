@@ -1,4 +1,4 @@
-module Push
+module Radium
   class Socket
     def initialize (@io : TCPSocket)
     end

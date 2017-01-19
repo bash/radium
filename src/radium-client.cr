@@ -1,7 +1,7 @@
 require "socket"
 require "./radium/*"
 
-module Push
+module Radium
     tcp = TCPSocket.new("localhost", 3126)
     socket = Socket.new(tcp)
     

@@ -1,4 +1,4 @@
-module Push
+module Radium
   class Server
 
     class Stop

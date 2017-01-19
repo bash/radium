@@ -1,4 +1,4 @@
-module Push
+module Radium
   enum MessageType
     PING
     PONG
