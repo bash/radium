@@ -1,5 +1,5 @@
 module Radium
   abstract struct Message
-    abstract def to_io(io : IO, format : IO::ByteFormat = IO::ByteFormat::SystemEndian)
+    abstract def to_io(io : IO, format : IO::ByteFormat)
   end
 end
