@@ -1,16 +1,16 @@
 module Radium
   class Socket
+    property io : TCPSocket
+
     def initialize (@io : TCPSocket)
     end
     
-    def write_msg_type (msg_type : MessageType)
-      @io.write_bytes(msg_type.to_u64, IO::ByteFormat::NetworkEndian)
+    def write_msg_type (type : MessageType)
+      @io.write_bytes(type, IO::ByteFormat::NetworkEndian)
     end
 
-    def read_msg_type : MessageType?
-      msg_type = @io.read_bytes(UInt64, IO::ByteFormat::NetworkEndian)
-      
-      MessageType.from_value?(msg_type)
+    def read_msg_type : MessageType
+      @io.read_bytes(MessageType, IO::ByteFormat::NetworkEndian)
     end
 
     def request (msg_type : MessageType) : MessageType?

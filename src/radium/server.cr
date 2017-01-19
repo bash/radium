@@ -6,6 +6,7 @@ module Radium
     end
 
     def initialize
+      @parser = MessageParser.new
       server = TCPServer.new "localhost", 3126
 
       loop do 
@@ -18,36 +19,36 @@ module Radium
     end
     
     def handle_connection(io : TCPSocket)
+      # todo: make configurable
       io.tcp_keepalive_count = 2
       io.tcp_keepalive_idle = 5
-
-      socket = Socket.new(io)
       
-      loop do        
-        if handle_message(socket, socket.read_msg_type)
+      loop do
+        if handle_message(io).is_a?(Stop)
           break
         end
       end
     end
 
-    def handle_message (socket : Socket, msg_type : MessageType?) : Stop?
+    def handle_message (io : TCPSocket) : Stop?
+      type = io.read_bytes(MessageType, IO::ByteFormat::NetworkEndian)
 
-      puts "#{msg_type}"
+      puts "#{type}"
 
-      unless msg_type
-        socket.write_msg_type(MessageType::ERROR)
-        return
-      end
-
-      if msg_type.close?
-        socket.close
+      if type.close?
+        io.close
         return Stop::INSTANCE
       end
 
-      if msg_type.ping?
-        socket.write_msg_type(MessageType::PONG)
+      if type.ping?
+        io.write_bytes(MessageType::Pong, IO::ByteFormat::NetworkEndian)
         return
       end
+
+      # todo: move parsing of message type to MessageParser
+      message = @parser.parse(type, io)
+
+      puts message
 
     end
   end
