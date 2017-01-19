@@ -8,7 +8,7 @@ module Push
     end
 
     def read_msg_type : MessageType?
-      msg_type = @io.read_bytes(Int64, IO::ByteFormat::NetworkEndian)
+      msg_type = @io.read_bytes(UInt64, IO::ByteFormat::NetworkEndian)
       
       MessageType.from_value?(msg_type)
     end

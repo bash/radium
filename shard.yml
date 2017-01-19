@@ -1,14 +1,14 @@
-name: push
+name: radium
 version: 0.1.0
 
 authors:
   - Ruben Schmidmeister <ruben.schmidmeister@icloud.com>
 
 targets:
-  push:
-    main: src/push.cr
-  'push-client':
-    main: src/push-client.cr
+  radium:
+    main: src/radium.cr
+  'radium-client':
+    main: src/radium-client.cr
 
 crystal: 0.20.1
 

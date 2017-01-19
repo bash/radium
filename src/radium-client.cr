@@ -1,5 +1,5 @@
 require "socket"
-require "./push/*"
+require "./radium/*"
 
 module Push
     tcp = TCPSocket.new("localhost", 3126)

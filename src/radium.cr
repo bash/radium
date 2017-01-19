@@ -1,6 +1,6 @@
 require "socket"
 require "signal"
-require "./push/*"
+require "./radium/*"
 
 module Push
   Server.new  
