@@ -12,7 +12,7 @@ module Radium
 
       # [flags: uint16] [ts: uint64] [length: uint64] [data: ...]
 
-      add = Messages::Add.new(Time.now.epoch.to_u64, EntryFlags::None, "foo".to_slice)
+      add = Messages::Add.new(Time.now.epoch.to_u64, EntryFlags::RandomClient, "foo".to_slice)
 
       tcp.write_bytes(add, IO::ByteFormat::NetworkEndian)
 

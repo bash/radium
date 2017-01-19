@@ -1,7 +1,7 @@
 module Radium
   @[Flags]
   enum EntryFlags : UInt16
-    RANDOM_CLIENT
+    RandomClient
 
     def self.from_raw (value : UInt16) : self
       if value == 0_u16
