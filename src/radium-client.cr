@@ -16,6 +16,9 @@ module Radium
 
       tcp.write_bytes(add, IO::ByteFormat::NetworkEndian)
 
+      puts tcp.read_bytes(MessageType, IO::ByteFormat::NetworkEndian)
+      puts tcp.read_bytes(Messages::Add, IO::ByteFormat::NetworkEndian)
+
       puts socket.request(MessageType::Ping)
 
     ensure

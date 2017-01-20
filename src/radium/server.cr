@@ -5,8 +5,11 @@ module Radium
       INSTANCE = new
     end
 
-    def initialize
+    def initialize(@channel : EventLoop::ProcessorChannel)
       @parser = MessageParser.new
+    end
+
+    def run
       server = TCPServer.new "localhost", 3126
 
       loop do 
@@ -30,26 +33,36 @@ module Radium
       end
     end
 
-    def handle_message (io : TCPSocket) : Stop?
+    def handle_message (io : TCPSocket)
       type = io.read_bytes(MessageType, IO::ByteFormat::NetworkEndian)
-
-      puts "#{type}"
 
       if type.close?
         io.close
         return Stop::INSTANCE
       end
 
-      if type.ping?
-        io.write_bytes(MessageType::Pong, IO::ByteFormat::NetworkEndian)
-        return
-      end
-
       # todo: move parsing of message type to MessageParser
       message = @parser.parse(type, io)
+      respond = Channel(Message).new
 
       puts message
 
+      # todo: move to message handler
+      action = 
+        case message
+          when Messages::Add
+            Actions::Add.new(message)
+          when Messages::Ping
+            Actions::Ping.new
+        end
+    
+      unless action
+        return
+      end
+
+      @channel.send({action, respond})
+      
+      io.write_bytes(respond.receive, IO::ByteFormat::NetworkEndian)
     end
   end
 end
