@@ -6,15 +6,14 @@ module Radium
     end
 
     def initialize(@channel : EventLoop::ProcessorChannel)
-      @parser = MessageParser.new
     end
 
     def run
       server = TCPServer.new "localhost", 3126
 
-      loop do 
+      while true 
         if client = server.accept?
-          handle_connection(client)
+          spawn handle_connection(client)
         else
           break
         end
@@ -26,43 +25,42 @@ module Radium
       io.tcp_keepalive_count = 2
       io.tcp_keepalive_idle = 5
       
-      loop do
-        if handle_message(io).is_a?(Stop)
-          break
-        end
+      while true
+        handle_message(io)
+        
+        break if io.closed?
       end
+
+    rescue
+      close io
+    end
+
+    def close (io : TCPSocket)
+      @channel.send(Actions::Close.new(io))
     end
 
     def handle_message (io : TCPSocket)
-      type = io.read_bytes(MessageType, IO::ByteFormat::NetworkEndian)
+      message = Message.parse(io, IO::ByteFormat::NetworkEndian)
 
-      if type.close?
-        io.close
-        return Stop::INSTANCE
-      end
-
-      # todo: move parsing of message type to MessageParser
-      message = @parser.parse(type, io)
-      respond = Channel(Message).new
-
-      puts message
-
-      # todo: move to message handler
+      # todo: doesn't belong here
       action = 
         case message
           when Messages::Add
-            Actions::Add.new(message)
+            Actions::Add.new(message, io)
           when Messages::Ping
-            Actions::Ping.new
+            Actions::Ping.new(io)
+          when Messages::Close
+            Actions::Close.new(io)
+          when Messages::Subscribe
+            Actions::Subscribe.new(io)
         end
     
       unless action
+        # todo: error
         return
       end
 
-      @channel.send({action, respond})
-      
-      io.write_bytes(respond.receive, IO::ByteFormat::NetworkEndian)
+      @channel.send(action)
     end
   end
 end

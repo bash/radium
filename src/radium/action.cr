@@ -1,5 +1,5 @@
 module Radium
   abstract struct Action
-    abstract def process(storage : Storage) : Message
+    abstract def perform(storage : Storage) : Message
   end
 end

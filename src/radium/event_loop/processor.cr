@@ -1,17 +1,17 @@
 module Radium::EventLoop
-  alias ProcessorChannel = Channel::Unbuffered({Radium::Action, Channel::Unbuffered(Radium::Message)})
+  alias ProcessorChannel = Channel::Unbuffered(Radium::Action)
 
   class Processor
 
-    def initialize(@channel : ProcessorChannel, @storage : Storage)
+    def initialize(@channel : ProcessorChannel, @backend : Backend)
     end
 
     def run
       spawn do
-        loop do 
-          action, respond = @channel.receive
-          
-          respond.send action.process(@storage)
+        while true
+          if action = @channel.receive?
+            action.perform(@backend)
+          end
         end
       end
     end

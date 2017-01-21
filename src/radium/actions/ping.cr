@@ -1,7 +1,10 @@
 module Radium::Actions
   struct Ping < Radium::Action
-    def process(storage : Storage) : Radium::Message
-      Radium::Messages::Pong.new
+    def initialize(@io : IO)
+    end
+
+    def perform(backend : Backend)
+      @io.write_bytes(Radium::Messages::Pong.new, IO::ByteFormat::NetworkEndian)
     end
   end
 end

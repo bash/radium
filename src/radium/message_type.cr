@@ -6,6 +6,9 @@ module Radium
     Add
     Remove
     Has
+    Subscribe
+    Push
+    Ok
     Error
 
     def to_io(io : IO, format : IO::ByteFormat)

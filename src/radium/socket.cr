@@ -1,25 +1,30 @@
 module Radium
+  # Todo: rename
   class Socket
     property io : TCPSocket
 
     def initialize (@io : TCPSocket)
     end
-    
-    def write_msg_type (type : MessageType)
-      @io.write_bytes(type, IO::ByteFormat::NetworkEndian)
+
+    def send_message(message : Message)
+      @io.write_bytes(message, IO::ByteFormat::NetworkEndian)
     end
 
-    def read_msg_type : MessageType
-      @io.read_bytes(MessageType, IO::ByteFormat::NetworkEndian)
+    def receive_message : Message
+      Message.parse(@io, IO::ByteFormat::NetworkEndian)
     end
 
-    def request (msg_type : MessageType) : MessageType?
-      write_msg_type msg_type
-      read_msg_type
+    def subscribe
+      request Messages::Subscribe.new
+
+      while true
+        yield receive_message
+      end
     end
 
-    def close
-      @io.close
+    def request (message : Message) : Message
+      send_message message
+      receive_message
     end
   end
 end

@@ -2,12 +2,12 @@ module Radium::Actions
   struct Add < Radium::Action
     property message : Radium::Messages::Add
 
-    def initialize (@message : Radium::Messages::Add)
+    def initialize (@message : Radium::Messages::Add, @io : IO)
     end
 
-    def process(storage : Storage) : Radium::Message
+    def perform(backend : Backend)
       # todo implement
-      @message
+      @io.write_bytes(@message, IO::ByteFormat::NetworkEndian)
     end
   end
 end
