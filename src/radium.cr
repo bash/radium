@@ -11,13 +11,5 @@ module Radium
   server = Server.new channel
 
   processor.run
-
-  spawn do 
-    while true
-      channel.send Actions::Push.new
-      sleep 2
-    end
-  end
-
   server.run
 end

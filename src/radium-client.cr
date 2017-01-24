@@ -9,9 +9,10 @@ module Radium
     puts socket.request Messages::Ping.new
     puts socket.request Messages::Ping.new
 
-    add = Messages::Add.new(Time.now.epoch.to_u64, EntryFlags::RandomClient, "foo".to_slice)
+    puts socket.request Messages::Add.new((Time.now.epoch + 5).to_u64, EntryFlags::RandomClient, "foo".to_slice)
+    puts socket.request Messages::Add.new((Time.now.epoch + 10).to_u64, EntryFlags::RandomClient, "foo".to_slice)
+    puts socket.request Messages::Add.new((Time.now.epoch + 10).to_u64, EntryFlags::RandomClient, "foo".to_slice)
 
-    puts socket.request add
     puts socket.request Messages::Ping.new
     
     socket.subscribe do |message|
