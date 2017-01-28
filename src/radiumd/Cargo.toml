@@ -1,0 +1,7 @@
+[package]
+name = "radiumd"
+version = "0.1.0"
+authors = ["Ruben Schmidmeister <ruben.schmidmeister@icloud.com>"]
+
+[dependencies]
+libradium = { path = "../libradium" }
