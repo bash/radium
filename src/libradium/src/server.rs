@@ -1,7 +1,5 @@
-use std::net::{TcpListener, TcpStream, ToSocketAddrs};
+use std::net::{TcpListener, ToSocketAddrs};
 use std::io::{Error};
-use ::backend::Backend;
-use ::entry::{Entry, EntryId};
 use ::worker::{Worker};
 
 pub struct Server {

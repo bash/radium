@@ -1,13 +1,13 @@
 use std::convert::{TryFrom, Into, From};
 use std::fmt;
-use std::io::{Read, Write, Result as IoResult, Error as IoError};
+use std::io::{Read, Error as IoError};
 use byteorder::{NetworkEndian, ReadBytesExt};
-use ::io::{Readable, Writable, Error};
+use ::io::{Readable, Error};
 
 macro_rules! gen_from {
     ($from:ty) => (
         impl From<$from> for Error {
-            fn from(err: $from) -> Self {
+            fn from(_: $from) -> Self {
                 Error {}
             }
         }

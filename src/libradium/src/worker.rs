@@ -3,10 +3,8 @@ use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use num_cpus;
 use ::backend::{Backend, SharedBackend};
-use ::entry::{Entry, EntryId};
-use ::message_type::MessageType;
 use ::messages::{action, Action};
-use ::io::{Readable, Writable};
+use ::io::Writable;
 
 fn get_num_workers () -> usize {
     let cores = num_cpus::get();
@@ -35,8 +33,9 @@ impl Worker {
 
         self.pool.execute(move || {
             let action = action(&mut stream).unwrap();
+            let resp = action.perform(backend);
 
-            action.perform(backend).write_to(&mut stream);
+            resp.write_to(&mut stream).unwrap();
         });
     }
 }

@@ -1,6 +1,5 @@
 use std::collections::BTreeSet;
 use std::sync::{Arc, Mutex};
-use std::iter::Iterator;
 use ::entry::Entry;
 
 pub type SharedBackend = Arc<Mutex<Backend>>;

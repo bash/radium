@@ -32,15 +32,15 @@ impl Pong {
 impl Action for Ping {
     type Resp = Pong;
 
-    fn perform(&self, backend: SharedBackend) -> Self::Resp {
-        println!("Pinging");
+    fn perform(&self, _: SharedBackend) -> Self::Resp {
+        println!("Received Ping");
 
         Pong::new()
     }
 }
 
 impl Readable for Ping {
-    fn read_from<R: Read>(read: &mut R) -> Result<Self, Error> {
+    fn read_from<R: Read>(_: &mut R) -> Result<Self, Error> {
         Ok(Ping::new())
     }
 }
