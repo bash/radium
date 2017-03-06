@@ -1,0 +1,2 @@
+[workspace]
+members = ["src/libradium", "src/radium", "src/radiumd"]

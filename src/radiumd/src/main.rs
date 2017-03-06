@@ -1,18 +1,13 @@
-mod radiumd;
-
 extern crate libradium;
 
-use radiumd::server::Server;
-use radiumd::backend::Backend;
-use libradium::entry::{Entry, EntryId};
+use libradium::server::Server;
+use libradium::backend::Backend;
+use libradium::worker::Worker;
 
 fn main() {
-    // let server = Server::bind(("localhost", 3126));
+    let backend = Backend::new();
+    let worker = Worker::new(backend);
+    let mut server = Server::new(worker);
 
-    let mut backend = Backend::new();
-
-    backend.add(Entry::new(EntryId::new(0)));
-    backend.add(Entry::new(EntryId::new(0)));
-
-    println!("{:?}", backend);
+    server.bind(("localhost", 3126)).unwrap();
 }

@@ -1,3 +1,2 @@
-/src/radium/Cargo.lock
-/src/radiumd/Cargo.lock
-/src/*/target/
+/Cargo.lock
+/target/

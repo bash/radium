@@ -1,5 +1,9 @@
 use std::collections::BTreeSet;
-use libradium::entry::Entry;
+use std::sync::{Arc, Mutex};
+use std::iter::Iterator;
+use ::entry::Entry;
+
+pub type SharedBackend = Arc<Mutex<Backend>>;
 
 #[derive(Debug)]
 pub struct Backend {
@@ -9,6 +13,10 @@ pub struct Backend {
 impl Backend {
     pub fn add(&mut self, entry: Entry) {
         self.items.insert(entry);
+    }
+
+    pub fn items(&self) -> &BTreeSet<Entry> {
+        &self.items
     }
 
     pub fn new() -> Self {

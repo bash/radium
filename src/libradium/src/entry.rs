@@ -1,5 +1,3 @@
-#![feature(ordering_chaining)]
-
 extern crate rand;
 
 use rand::Rng;
@@ -7,12 +5,12 @@ use std::cmp::{Ord, Ordering};
 
 #[derive(Eq, PartialEq, Debug)]
 pub struct EntryId {
-    timestamp: i64,
+    timestamp: u64,
     random: u16
 }
 
 impl EntryId {
-    pub fn new(timestamp: i64) -> Self {
+    pub fn new(timestamp: u64) -> Self {
         let mut rng = rand::thread_rng();
         let random = rng.gen::<u16>();
 
@@ -25,11 +23,8 @@ impl EntryId {
 
 impl Ord for EntryId {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.timestamp == other.timestamp {
-            return self.random.cmp(&other.random);
-        }
-
-        self.timestamp.cmp(&other.timestamp)
+        self.random.cmp(&other.random)
+            .then(self.timestamp.cmp(&other.timestamp))
     }
 }
 
