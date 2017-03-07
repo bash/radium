@@ -9,5 +9,5 @@ fn main() {
     let worker = Worker::new(backend);
     let mut server = Server::new(worker);
 
-    server.bind(("localhost", 3126)).unwrap();
+    server.bind(("127.0.0.1", 3126)).unwrap();
 }

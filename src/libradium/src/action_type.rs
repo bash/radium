@@ -2,54 +2,37 @@ use std::convert::{TryFrom, Into, From};
 use std::fmt;
 use std::io::{Read, Error as IoError};
 use byteorder::{NetworkEndian, ReadBytesExt};
-use ::io::{Readable, Error};
-
-macro_rules! gen_from {
-    ($from:ty) => (
-        impl From<$from> for Error {
-            fn from(_: $from) -> Self {
-                Error {}
-            }
-        }
-    )
-}
+use super::io::{Readable, Error};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub struct MessageTypeTryFromErr(());
+pub struct ActionTypeTryFromErr(());
 
-impl fmt::Display for MessageTypeTryFromErr {
+impl fmt::Display for ActionTypeTryFromErr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "invalid message type")
     }
 }
 
-#[derive(Debug)]
-pub enum MessageTypeReadError {
-    IoError(IoError),
-    MessageTypeTryFromErr(MessageTypeTryFromErr)
-}
-
-gen_from!(IoError);
-gen_from!(MessageTypeTryFromErr);
-
-impl fmt::Display for MessageTypeReadError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "")
+impl From<ActionTypeTryFromErr> for Error {
+    fn from(_: ActionTypeTryFromErr) -> Self {
+        Error {}
     }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum MessageType {
-    Ping
+    Ping,
+    Close = 2
 }
 
 impl TryFrom<u16> for MessageType {
-    type Err = MessageTypeTryFromErr;
+    type Err = ActionTypeTryFromErr;
 
     fn try_from(value: u16) -> Result<Self, Self::Err> {
         match value {
             0 => Ok(MessageType::Ping),
-            _ => Err(MessageTypeTryFromErr(())),
+            2 => Ok(MessageType::Close),
+            _ => Err(ActionTypeTryFromErr(())),
         }
     }
 }
