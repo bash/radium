@@ -86,7 +86,7 @@ impl Close {
 }
 
 impl Action for Close {
-    fn perform(&self, backend: SharedBackend) -> ActionResponse {
+    fn perform(&self, _: SharedBackend) -> ActionResponse {
         ActionResponse::None
     }
 }

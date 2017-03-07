@@ -1,6 +1,6 @@
 use std::convert::{TryFrom, Into, From};
 use std::fmt;
-use std::io::{Read, Error as IoError};
+use std::io::Read;
 use byteorder::{NetworkEndian, ReadBytesExt};
 use super::io::{ReadFrom, Error};
 
