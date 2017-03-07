@@ -2,7 +2,7 @@ use std::convert::{TryFrom, Into, From};
 use std::fmt;
 use std::io::{Read, Error as IoError};
 use byteorder::{NetworkEndian, ReadBytesExt};
-use super::io::{Readable, Error};
+use super::io::{ReadFrom, Error};
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub struct ActionTypeTryFromErr(());
@@ -43,7 +43,7 @@ impl Into<u16> for MessageType {
     }
 }
 
-impl Readable for MessageType {
+impl ReadFrom for MessageType {
     fn read_from<R: Read>(read: &mut R) -> Result<Self, Error> {
         let raw_msg_type = read.read_u16::<NetworkEndian>()?;
 

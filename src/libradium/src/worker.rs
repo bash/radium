@@ -5,7 +5,7 @@ use num_cpus;
 use super::backend::{Backend, SharedBackend};
 use super::messages::{action, Action};
 use super::connection::ConnectionMode;
-use super::io::{Readable, Writable};
+use super::io::{ReadFrom, WriteTo};
 use super::messages::WrappedAction;
 
 fn get_num_workers () -> usize {

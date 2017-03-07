@@ -1,7 +1,7 @@
 use std::io::{Read, Write, Result as IoResult};
 use std::fmt::Debug;
 use byteorder::{NetworkEndian, WriteBytesExt};
-use super::io::{Readable, Writable, Error};
+use super::io::{ReadFrom, WriteTo, Error};
 use super::action_type::MessageType;
 use super::backend::SharedBackend;
 
@@ -15,7 +15,7 @@ pub enum ActionResponse {
     None
 }
 
-impl Writable for ActionResponse {
+impl WriteTo for ActionResponse {
     fn write_to<W: Write + Sized>(&self, write: &mut W) -> IoResult<()> {
         match self {
             &ActionResponse::Pong(ref resp) => resp.write_to(write),
@@ -54,7 +54,7 @@ impl Action for Ping {
     }
 }
 
-impl Readable for Ping {
+impl ReadFrom for Ping {
     fn read_from<R: Read>(_: &mut R) -> Result<Self, Error> {
         Ok(Ping::new())
     }
@@ -70,7 +70,7 @@ impl Pong {
     }
 }
 
-impl Writable for Pong {
+impl WriteTo for Pong {
     fn write_to<W: Write>(&self, write: &mut W) -> IoResult<()> {
         write.write_u16::<NetworkEndian>(1)
     }

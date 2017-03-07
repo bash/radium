@@ -1,4 +1,4 @@
-use super::io::{Readable, Writable, Error};
+use super::io::{ReadFrom, WriteTo, Error};
 use std::convert::{TryFrom, From};
 use std::io::{Read, Write, Result as IoResult};
 use byteorder::{ReadBytesExt, WriteBytesExt};
@@ -36,7 +36,7 @@ impl Into<u8> for ConnectionMode {
     }
 }
 
-impl Readable for ConnectionMode {
+impl ReadFrom for ConnectionMode {
     fn read_from<R: Read>(read: &mut R) -> Result<Self, Error> {
         let raw = read.read_u8()?;
 
@@ -44,7 +44,7 @@ impl Readable for ConnectionMode {
     }
 }
 
-impl Writable for ConnectionMode {
+impl WriteTo for ConnectionMode {
     fn write_to<W: Write + Sized>(&self, write: &mut W) -> IoResult<()> where Self: Sized, W: Sized {
         write.write_u8((*self).into())
     }
