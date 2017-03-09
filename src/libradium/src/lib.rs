@@ -7,6 +7,10 @@ extern crate rand;
 extern crate threadpool;
 extern crate num_cpus;
 extern crate byteorder;
+extern crate time;
+
+#[macro_use]
+mod macros;
 
 pub mod backend;
 pub mod entry;

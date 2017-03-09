@@ -26,6 +26,10 @@ impl Entry {
             id: id,
         }
     }
+
+    pub fn timestamp(&self) -> u64 {
+        self.timestamp
+    }
 }
 
 impl Ord for Entry {
