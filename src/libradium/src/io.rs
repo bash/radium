@@ -1,5 +1,7 @@
 use std::io::{Read, Write, Result as IoResult, Error as IoError};
 
+pub type WriteToResult = IoResult<()>;
+
 #[derive(Debug)]
 pub struct Error {}
 
@@ -14,5 +16,5 @@ pub trait ReadFrom: Sized {
 }
 
 pub trait WriteTo {
-    fn write_to<W: Write + Sized>(&self, write: &mut W) -> IoResult<()>;
+    fn write_to<W: Write + Sized>(&self, write: &mut W) -> WriteToResult;
 }

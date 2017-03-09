@@ -1,6 +1,6 @@
-use std::io::{Read, Write, Result as IoResult};
+use std::io::{Read, Write};
 use std::fmt::Debug;
-use super::io::{ReadFrom, WriteTo, Error};
+use super::io::{Error, ReadFrom, WriteTo, WriteToResult};
 use super::action_type::ActionType;
 use super::backend::SharedBackend;
 
@@ -23,7 +23,7 @@ pub enum ActionResponse {
 }
 
 impl WriteTo for ActionResponse {
-    fn write_to<W: Write + Sized>(&self, write: &mut W) -> IoResult<()> {
+    fn write_to<W: Write + Sized>(&self, write: &mut W) -> WriteToResult {
         match self {
             &ActionResponse::Pong(ref resp) => resp.write_to(write),
             &ActionResponse::None => Ok(())

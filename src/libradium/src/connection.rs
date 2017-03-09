@@ -1,6 +1,6 @@
-use super::io::{ReadFrom, WriteTo, Error};
+use super::io::{ReadFrom, WriteTo, Error, WriteToResult};
 use std::convert::{TryFrom, From};
-use std::io::{Read, Write, Result as IoResult};
+use std::io::{Read, Write};
 use byteorder::{ReadBytesExt, WriteBytesExt};
 
 #[derive(Copy, Clone, Debug)]
@@ -45,7 +45,7 @@ impl ReadFrom for ConnectionMode {
 }
 
 impl WriteTo for ConnectionMode {
-    fn write_to<W: Write + Sized>(&self, write: &mut W) -> IoResult<()> where Self: Sized, W: Sized {
+    fn write_to<W: Write + Sized>(&self, write: &mut W) -> WriteToResult where Self: Sized, W: Sized {
         write.write_u8((*self).into())
     }
 }

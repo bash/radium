@@ -1,8 +1,8 @@
-use std::io::{Read, Write, Result as IoResult};
+use std::io::{Read, Write};
 use byteorder::{NetworkEndian, WriteBytesExt};
 use super::{Action, ActionResponse};
 use super::super::backend::SharedBackend;
-use super::super::io::{ReadFrom, WriteTo, Error};
+use super::super::io::{Error, ReadFrom, WriteTo, WriteToResult};
 
 #[derive(Debug)]
 pub struct Ping {}
@@ -35,7 +35,7 @@ impl Pong {
 }
 
 impl WriteTo for Pong {
-    fn write_to<W: Write>(&self, write: &mut W) -> IoResult<()> {
+    fn write_to<W: Write>(&self, write: &mut W) -> WriteToResult {
         write.write_u16::<NetworkEndian>(1)
     }
 }
