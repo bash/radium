@@ -7,27 +7,27 @@ pub type SharedBackend = Arc<Mutex<Backend>>;
 
 #[derive(Debug)]
 pub struct Backend {
-    items: BTreeSet<Entry>,
+    entries: BTreeSet<Entry>,
     listeners: Vec<TcpStream>
 }
 
 impl Backend {
     pub fn new() -> Self {
         Backend {
-            items: BTreeSet::new(),
+            entries: BTreeSet::new(),
             listeners: Vec::new()
         }
     }
 
     pub fn add_item(&mut self, entry: Entry) {
-        self.items.insert(entry);
+        self.entries.insert(entry);
+    }
+
+    pub fn has_item(&self, entry: &Entry) -> bool {
+        self.entries.contains(entry)
     }
 
     pub fn add_listener(&mut self, listener: TcpStream) {
         self.listeners.push(listener);
-    }
-
-    pub fn items(&self) -> &BTreeSet<Entry> {
-        &self.items
     }
 }

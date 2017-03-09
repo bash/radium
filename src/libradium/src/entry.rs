@@ -3,45 +3,26 @@ extern crate rand;
 use rand::Rng;
 use std::cmp::{Ord, Ordering};
 
-#[derive(Eq, PartialEq, Debug)]
-pub struct EntryId {
-    timestamp: u64,
-    random: u16
-}
-
-impl EntryId {
-    pub fn new(timestamp: u64) -> Self {
-        let mut rng = rand::thread_rng();
-        let random = rng.gen::<u16>();
-
-        EntryId {
-            timestamp: timestamp,
-            random: random
-        }
-    }
-}
-
-impl Ord for EntryId {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.random.cmp(&other.random)
-            .then(self.timestamp.cmp(&other.timestamp))
-    }
-}
-
-impl PartialOrd for EntryId {
-    fn partial_cmp(&self, other: &EntryId) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-#[derive(Eq, PartialEq, Debug)]
+#[derive(Eq, PartialEq, Debug, Copy, Clone, Hash)]
 pub struct Entry {
-    id: EntryId
+    timestamp: u64,
+    id: u16
 }
 
 impl Entry {
-    pub fn new(id: EntryId) -> Self {
-        return Entry {
+    pub fn generate(timestamp: u64) -> Self {
+        let mut rng = rand::thread_rng();
+        let random = rng.gen::<u16>();
+
+        Entry {
+            timestamp: timestamp,
+            id: random
+        }
+    }
+
+    pub fn new(timestamp: u64, id: u16) -> Self {
+        Entry {
+            timestamp: timestamp,
             id: id
         }
     }
@@ -50,6 +31,7 @@ impl Entry {
 impl Ord for Entry {
     fn cmp(&self, other: &Self) -> Ordering {
         self.id.cmp(&other.id)
+            .then(self.timestamp.cmp(&other.timestamp))
     }
 }
 
@@ -58,4 +40,3 @@ impl PartialOrd for Entry {
         Some(self.cmp(other))
     }
 }
-
