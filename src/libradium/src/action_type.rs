@@ -22,7 +22,7 @@ impl From<ActionTypeTryFromErr> for Error {
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum ActionType {
     Ping,
-    Close = 2
+    Close = 2,
 }
 
 impl TryFrom<u16> for ActionType {

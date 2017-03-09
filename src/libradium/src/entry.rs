@@ -6,7 +6,7 @@ use std::cmp::{Ord, Ordering};
 #[derive(Eq, PartialEq, Debug, Copy, Clone, Hash)]
 pub struct Entry {
     timestamp: u64,
-    id: u16
+    id: u16,
 }
 
 impl Entry {
@@ -16,21 +16,22 @@ impl Entry {
 
         Entry {
             timestamp: timestamp,
-            id: random
+            id: random,
         }
     }
 
     pub fn new(timestamp: u64, id: u16) -> Self {
         Entry {
             timestamp: timestamp,
-            id: id
+            id: id,
         }
     }
 }
 
 impl Ord for Entry {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.id.cmp(&other.id)
+        self.id
+            .cmp(&other.id)
             .then(self.timestamp.cmp(&other.timestamp))
     }
 }

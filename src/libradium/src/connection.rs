@@ -6,7 +6,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt};
 #[derive(Copy, Clone, Debug)]
 pub enum ConnectionMode {
     Action,
-    Listen
+    Listen,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
@@ -45,7 +45,10 @@ impl ReadFrom for ConnectionMode {
 }
 
 impl WriteTo for ConnectionMode {
-    fn write_to<W: Write + Sized>(&self, write: &mut W) -> WriteToResult where Self: Sized, W: Sized {
+    fn write_to<W: Write + Sized>(&self, write: &mut W) -> WriteToResult
+        where Self: Sized,
+              W: Sized
+    {
         write.write_u8((*self).into())
     }
 }

@@ -8,14 +8,14 @@ pub type SharedBackend = Arc<Mutex<Backend>>;
 #[derive(Debug)]
 pub struct Backend {
     entries: BTreeSet<Entry>,
-    listeners: Vec<TcpStream>
+    listeners: Vec<TcpStream>,
 }
 
 impl Backend {
     pub fn new() -> Self {
         Backend {
             entries: BTreeSet::new(),
-            listeners: Vec::new()
+            listeners: Vec::new(),
         }
     }
 

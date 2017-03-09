@@ -19,14 +19,14 @@ pub trait Action: Debug {
 #[derive(Debug)]
 pub enum ActionResponse {
     Pong(Pong),
-    None
+    None,
 }
 
 impl WriteTo for ActionResponse {
     fn write_to<W: Write + Sized>(&self, write: &mut W) -> WriteToResult {
         match self {
             &ActionResponse::Pong(ref resp) => resp.write_to(write),
-            &ActionResponse::None => Ok(())
+            &ActionResponse::None => Ok(()),
         }
     }
 }
@@ -36,6 +36,6 @@ pub fn action<R: Read>(read: &mut R) -> Result<WrappedAction, Error> {
 
     match msg_type {
         ActionType::Ping => Ok(WrappedAction::Ping(Ping::new())),
-        ActionType::Close => Ok(WrappedAction::Close(Close::new()))
+        ActionType::Close => Ok(WrappedAction::Close(Close::new())),
     }
 }

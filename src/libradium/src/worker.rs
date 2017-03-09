@@ -7,12 +7,12 @@ use super::actions::{action, Action, WrappedAction};
 use super::connection::ConnectionMode;
 use super::io::{ReadFrom, WriteTo};
 
-fn get_num_workers () -> usize {
+fn get_num_workers() -> usize {
     let cores = num_cpus::get();
 
     match cores {
         1 => 1,
-        _ => cores - 1
+        _ => cores - 1,
     }
 }
 
@@ -41,14 +41,14 @@ fn register_listener(stream: TcpStream, backend: SharedBackend) {
 
 pub struct Worker {
     pool: ThreadPool,
-    backend: SharedBackend
+    backend: SharedBackend,
 }
 
 impl Worker {
     pub fn new(backend: Backend) -> Self {
         Worker {
             pool: ThreadPool::new(get_num_workers()),
-            backend: Arc::new(Mutex::new(backend))
+            backend: Arc::new(Mutex::new(backend)),
         }
     }
 
@@ -62,7 +62,7 @@ impl Worker {
 
             match mode {
                 ConnectionMode::Action => receive_actions(stream, backend),
-                ConnectionMode::Listen => register_listener(stream, backend)
+                ConnectionMode::Listen => register_listener(stream, backend),
             }
         });
     }
