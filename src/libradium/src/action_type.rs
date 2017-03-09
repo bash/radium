@@ -20,33 +20,33 @@ impl From<ActionTypeTryFromErr> for Error {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum MessageType {
+pub enum ActionType {
     Ping,
     Close = 2
 }
 
-impl TryFrom<u16> for MessageType {
+impl TryFrom<u16> for ActionType {
     type Err = ActionTypeTryFromErr;
 
     fn try_from(value: u16) -> Result<Self, Self::Err> {
         match value {
-            0 => Ok(MessageType::Ping),
-            2 => Ok(MessageType::Close),
+            0 => Ok(ActionType::Ping),
+            2 => Ok(ActionType::Close),
             _ => Err(ActionTypeTryFromErr(())),
         }
     }
 }
 
-impl Into<u16> for MessageType {
+impl Into<u16> for ActionType {
     fn into(self) -> u16 {
         self as u16
     }
 }
 
-impl ReadFrom for MessageType {
+impl ReadFrom for ActionType {
     fn read_from<R: Read>(read: &mut R) -> Result<Self, Error> {
         let raw_msg_type = read.read_u16::<NetworkEndian>()?;
 
-        Ok(MessageType::try_from(raw_msg_type)?)
+        Ok(ActionType::try_from(raw_msg_type)?)
     }
 }
