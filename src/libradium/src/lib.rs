@@ -12,7 +12,7 @@ pub mod backend;
 pub mod entry;
 pub mod io;
 pub mod action_type;
-pub mod messages;
+pub mod actions;
 pub mod server;
 pub mod worker;
 pub mod connection;

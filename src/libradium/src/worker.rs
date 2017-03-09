@@ -3,10 +3,9 @@ use std::net::TcpStream;
 use std::sync::{Arc, Mutex};
 use num_cpus;
 use super::backend::{Backend, SharedBackend};
-use super::messages::{action, Action};
+use super::actions::{action, Action, WrappedAction};
 use super::connection::ConnectionMode;
 use super::io::{ReadFrom, WriteTo};
-use super::messages::WrappedAction;
 
 fn get_num_workers () -> usize {
     let cores = num_cpus::get();
