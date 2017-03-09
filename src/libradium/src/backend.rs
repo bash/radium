@@ -35,13 +35,16 @@ impl Backend {
     }
 
     pub fn expired_entries(&self) -> ExpiredItems {
-        ExpiredItems { iter: self.entries.iter(), timestamp: now_utc().to_timespec().sec }
+        let iter = self.entries.iter();
+        let timestamp = now_utc().to_timespec().sec;
+
+        ExpiredItems { iter, timestamp }
     }
 }
 
 pub struct ExpiredItems<'a> {
     iter: Iter<'a, Entry>,
-    timestamp: i64
+    timestamp: i64,
 }
 
 impl<'a> Iterator for ExpiredItems<'a> {
@@ -51,7 +54,7 @@ impl<'a> Iterator for ExpiredItems<'a> {
         let entry = maybe!(self.iter.next());
 
         if self.timestamp < (entry.timestamp() as i64) {
-            return None
+            return None;
         }
 
         Some(entry)

@@ -1,4 +1,6 @@
 language: rust
+rust:
+- nightly
 cache: cargo
 before_script:
 - export PATH="$PATH:$HOME/.cargo/bin"
