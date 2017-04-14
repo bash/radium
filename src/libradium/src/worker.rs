@@ -1,69 +1,71 @@
-use threadpool::ThreadPool;
-use std::net::TcpStream;
-use std::sync::{Arc, Mutex};
-use num_cpus;
-use super::backend::{Backend, SharedBackend};
-use super::actions::{action, Action, WrappedAction};
-use super::connection::ConnectionMode;
-use super::io::{ReadFrom, WriteTo};
+use std::sync::mpsc::{Receiver, RecvTimeoutError};
+use std::thread;
+use std::time::Duration;
+use time::precise_time_ns;
 
-fn get_num_workers() -> usize {
-    let cores = num_cpus::get();
+use super::command::{Command, Listener};
+use super::storage::Storage;
 
-    match cores {
-        1 => 1,
-        _ => cores - 1,
-    }
+pub struct Worker<L: Listener> {
+    storage: Storage,
+    receiver: Receiver<Command>,
+    listener: L,
+    last_checked: Option<u64>
 }
 
-fn receive_actions(mut stream: TcpStream, backend: SharedBackend) {
-    loop {
-        let backend = backend.clone();
-        let action = action(&mut stream).unwrap();
-
-        println!("Receive {:?}", action);
-
-        if let WrappedAction::Close(_) = action {
-            return;
-        }
-
-        let resp = action.perform(backend);
-
-        resp.write_to(&mut stream).unwrap();
-    }
-}
-
-fn register_listener(stream: TcpStream, backend: SharedBackend) {
-    let mut backend = backend.lock().unwrap();
-
-    backend.add_listener(stream);
-}
-
-pub struct Worker {
-    pool: ThreadPool,
-    backend: SharedBackend,
-}
-
-impl Worker {
-    pub fn new(backend: Backend) -> Self {
+impl<L: Listener + 'static> Worker<L> {
+    pub fn new(storage: Storage, receiver: Receiver<Command>, listener: L) -> Worker<L> {
         Worker {
-            pool: ThreadPool::new(get_num_workers()),
-            backend: Arc::new(Mutex::new(backend)),
+            storage,
+            receiver,
+            listener,
+            last_checked: None
         }
     }
 
-    pub fn handle_client(&self, mut stream: TcpStream) {
-        let backend = self.backend.clone();
+    pub fn spawn(mut self) -> thread::JoinHandle<()> {
+        thread::spawn(move || {
+            self.check_expired();
 
-        self.pool.execute(move || {
-            let mode = ConnectionMode::read_from(&mut stream).unwrap();
+            loop {
+                let incoming = self.receiver.recv_timeout(Duration::from_millis(500));
 
-            println!("{:?}", mode);
+                self.listener.on_tick();
 
-            match mode {
-                ConnectionMode::Action => receive_actions(stream, backend),
-                ConnectionMode::Listen => register_listener(stream, backend),
+                if let Err(err) = incoming {
+                    match err {
+                        RecvTimeoutError::Timeout => {},
+                        RecvTimeoutError::Disconnected => panic!("channel disconnected"),
+                    }
+                }
+
+                if let Ok(command) = incoming {
+                    println!("{:?}", command);
+                }
+
+                if self.needs_checking() {
+                    self.check_expired();
+                }
             }
-        });
+        })
+    }
+
+    fn check_expired(&mut self) {
+        self.last_checked = Some(precise_time_ns());
+
+        for entry in self.storage.expired_entries() {
+            self.listener.on_expired(entry);
+            self.storage.remove_entry(&entry);
+        }
+    }
+
+    fn needs_checking(&self) -> bool {
+        match self.last_checked {
+            None => true,
+            Some(value) => {
+                // TODO: ooh no we have a magic number here
+                return (precise_time_ns() - value) >= 1000000000
+            }
+        }
     }
 }
