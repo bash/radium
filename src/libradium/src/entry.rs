@@ -10,7 +10,7 @@ pub struct Entry {
 }
 
 impl Entry {
-    pub fn generate(timestamp: u64) -> Self {
+    pub fn gen(timestamp: u64) -> Self {
         let mut rng = rand::thread_rng();
         let random = rng.gen::<u16>();
 

@@ -11,5 +11,6 @@ mod macros;
 
 pub mod command;
 pub mod entry;
+pub mod frontend;
 pub mod storage;
 pub mod worker;

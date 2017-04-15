@@ -7,12 +7,10 @@ use std::io;
 use std::sync::mpsc::{Sender, Receiver};
 use time::precise_time_ns;
 
-use libradium::storage::Storage;
 use libradium::entry::Entry;
-use libradium::worker::Worker;
-use libradium::command::{Command, Listener};
+use libradium::command::Listener;
+use libradium::frontend::Frontend;
 
-#[derive(Debug)]
 struct TestListener {
     tx: Sender<Output>
 }
@@ -33,25 +31,21 @@ impl Listener for TestListener {
 }
 
 fn main() {
-    let (tx, rx): (Sender<Command>, Receiver<Command>) = mpsc::channel();
     let (tx_listener, rx_listener): (Sender<Output>, Receiver<Output>) = mpsc::channel();
-    let mut storage = Storage::new();
+    let listener = Box::new(TestListener { tx: tx_listener });
+    let (frontend, _) = Frontend::build(listener);
 
     let now = precise_time_ns();
 
-    storage.add_entry(Entry::generate(now));
-    storage.add_entry(Entry::generate(now + 1000000000 * 2));
-    storage.add_entry(Entry::generate(now + 1000000000 * 4));
-    storage.add_entry(Entry::generate(now + 1000000000 * 6));
-    storage.add_entry(Entry::generate(now + 1000000000 * 6));
-    storage.add_entry(Entry::generate(now + 1000000000 * 6));
-    storage.add_entry(Entry::generate(now + 1000000000 * 6));
-    storage.add_entry(Entry::generate(now + 1000000000 * 6));
-    storage.add_entry(Entry::generate(now + 1000000000 * 10));
-
-    let worker = Worker::new(storage, rx, TestListener { tx: tx_listener });
-
-    worker.spawn();
+    frontend.add_entry(Entry::gen(now)).unwrap();
+    frontend.add_entry(Entry::gen(now + 1000000000 * 2)).unwrap();
+    frontend.add_entry(Entry::gen(now + 1000000000 * 4)).unwrap();
+    frontend.add_entry(Entry::gen(now + 1000000000 * 6)).unwrap();
+    frontend.add_entry(Entry::gen(now + 1000000000 * 6)).unwrap();
+    frontend.add_entry(Entry::gen(now + 1000000000 * 6)).unwrap();
+    frontend.add_entry(Entry::gen(now + 1000000000 * 6)).unwrap();
+    frontend.add_entry(Entry::gen(now + 1000000000 * 6)).unwrap();
+    frontend.add_entry(Entry::gen(now + 1000000000 * 10)).unwrap();
 
     loop {
         match rx_listener.recv().unwrap() {

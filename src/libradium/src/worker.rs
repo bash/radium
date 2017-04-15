@@ -6,15 +6,23 @@ use time::precise_time_ns;
 use super::command::{Command, Listener};
 use super::storage::Storage;
 
-pub struct Worker<L: Listener> {
+pub struct Worker {
     storage: Storage,
     receiver: Receiver<Command>,
-    listener: L,
+    listener: Box<Listener>,
     last_checked: Option<u64>
 }
 
-impl<L: Listener + 'static> Worker<L> {
-    pub fn new(storage: Storage, receiver: Receiver<Command>, listener: L) -> Worker<L> {
+pub fn spawn(storage: Storage, receiver: Receiver<Command>, listener: Box<Listener>) -> thread::JoinHandle<()> {
+    thread::spawn(move || {
+        let worker = Worker::new(storage, receiver, listener);
+
+        worker.run();
+    })
+}
+
+impl Worker {
+    pub fn new(storage: Storage, receiver: Receiver<Command>, listener: Box<Listener>) -> Worker {
         Worker {
             storage,
             receiver,
@@ -23,31 +31,36 @@ impl<L: Listener + 'static> Worker<L> {
         }
     }
 
-    pub fn spawn(mut self) -> thread::JoinHandle<()> {
-        thread::spawn(move || {
-            self.check_expired();
+    pub fn run(mut self) -> thread::JoinHandle<()> {
+        self.check_expired();
 
-            loop {
-                let incoming = self.receiver.recv_timeout(Duration::from_millis(500));
+        loop {
+            let incoming = self.receiver.recv_timeout(Duration::from_millis(500));
 
-                self.listener.on_tick();
+            self.listener.on_tick();
 
-                if let Err(err) = incoming {
-                    match err {
-                        RecvTimeoutError::Timeout => {},
-                        RecvTimeoutError::Disconnected => panic!("channel disconnected"),
-                    }
-                }
-
-                if let Ok(command) = incoming {
-                    println!("{:?}", command);
-                }
-
-                if self.needs_checking() {
-                    self.check_expired();
+            if let Err(err) = incoming {
+                match err {
+                    RecvTimeoutError::Timeout => {}
+                    RecvTimeoutError::Disconnected => panic!("channel disconnected"),
                 }
             }
-        })
+
+            if let Ok(command) = incoming {
+                match command {
+                    Command::AddEntry(entry) => {
+                        self.storage.add_entry(entry);
+                    }
+                    Command::RemoveEntry(entry) => {
+                        self.storage.remove_entry(&entry);
+                    }
+                }
+            }
+
+            if self.needs_checking() {
+                self.check_expired();
+            }
+        }
     }
 
     fn check_expired(&mut self) {
