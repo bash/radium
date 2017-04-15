@@ -42,26 +42,31 @@ impl Worker {
 
             self.listener.on_tick();
 
-            if let Err(err) = incoming {
-                match err {
-                    RecvTimeoutError::Timeout => {}
-                    RecvTimeoutError::Disconnected => panic!("channel disconnected"),
-                }
-            }
-
-            if let Ok(command) = incoming {
-                match command {
-                    Command::AddEntry(entry) => {
-                        self.storage.add_entry(entry);
-                    }
-                    Command::RemoveEntry(entry) => {
-                        self.storage.remove_entry(&entry);
-                    }
-                }
+            match incoming {
+                Err(err) => self.handle_error(err),
+                Ok(command) => self.handle_command(command)
             }
 
             if self.needs_checking() {
                 self.check_expired();
+            }
+        }
+    }
+
+    fn handle_error(&self, err: RecvTimeoutError) {
+        match err {
+            RecvTimeoutError::Timeout => {}
+            RecvTimeoutError::Disconnected => panic!("channel disconnected"),
+        }
+    }
+
+    fn handle_command(&mut self, command: Command) {
+        match command {
+            Command::AddEntry(entry) => {
+                self.storage.add_entry(entry);
+            }
+            Command::RemoveEntry(entry) => {
+                self.storage.remove_entry(&entry);
             }
         }
     }
