@@ -2,9 +2,18 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::thread;
 use std::time::Duration;
 use time::precise_time_ns;
-
 use super::command::{Command, Listener};
 use super::storage::Storage;
+
+///
+/// Minimum duration between expiration checks in nanoseconds
+///
+const CHECK_INTERVAL: u64 = 1000000000;
+
+///
+/// Receive timeout for incoming messages in milliseconds
+///
+const RECV_TIMEOUT: u64 = 500;
 
 pub struct Worker {
     storage: Storage,
@@ -38,7 +47,7 @@ impl Worker {
         self.check_expired();
 
         loop {
-            let incoming = self.receiver.recv_timeout(Duration::from_millis(500));
+            let incoming = self.receiver.recv_timeout(Duration::from_millis(RECV_TIMEOUT));
 
             self.listener.on_tick();
 
@@ -84,8 +93,7 @@ impl Worker {
         match self.last_checked {
             None => true,
             Some(value) => {
-                // TODO: ooh no we have a magic number here
-                return (precise_time_ns() - value) >= 1000000000;
+                return (precise_time_ns() - value) >= CHECK_INTERVAL;
             }
         }
     }
