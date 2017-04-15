@@ -41,7 +41,7 @@ impl Storage {
     }
 }
 
-pub struct ExpiredItems<'a> {
+struct ExpiredItems<'a> {
     iter: Iter<'a, Entry>,
     timestamp: Timestamp,
 }
