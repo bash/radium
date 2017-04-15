@@ -10,10 +10,13 @@ pub struct Worker {
     storage: Storage,
     receiver: Receiver<Command>,
     listener: Box<Listener>,
-    last_checked: Option<u64>
+    last_checked: Option<u64>,
 }
 
-pub fn spawn(storage: Storage, receiver: Receiver<Command>, listener: Box<Listener>) -> thread::JoinHandle<()> {
+pub fn spawn(storage: Storage,
+             receiver: Receiver<Command>,
+             listener: Box<Listener>)
+             -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let worker = Worker::new(storage, receiver, listener);
 
@@ -27,7 +30,7 @@ impl Worker {
             storage,
             receiver,
             listener,
-            last_checked: None
+            last_checked: None,
         }
     }
 
@@ -77,7 +80,7 @@ impl Worker {
             None => true,
             Some(value) => {
                 // TODO: ooh no we have a magic number here
-                return (precise_time_ns() - value) >= 1000000000
+                return (precise_time_ns() - value) >= 1000000000;
             }
         }
     }

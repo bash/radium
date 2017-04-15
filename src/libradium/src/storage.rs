@@ -6,14 +6,12 @@ use time::precise_time_ns;
 
 #[derive(Debug)]
 pub struct Storage {
-    entries: BTreeSet<Entry>
+    entries: BTreeSet<Entry>,
 }
 
 impl Storage {
     pub fn new() -> Self {
-        Storage {
-            entries: BTreeSet::new()
-        }
+        Storage { entries: BTreeSet::new() }
     }
 
     pub fn add_entry(&mut self, entry: Entry) {
@@ -29,7 +27,10 @@ impl Storage {
     }
 
     pub fn expired_entries(&self) -> Vec<Entry> {
-        let iter = ExpiredItems { iter: self.entries.iter(), timestamp: precise_time_ns() };
+        let iter = ExpiredItems {
+            iter: self.entries.iter(),
+            timestamp: precise_time_ns(),
+        };
         let mut entries = Vec::<Entry>::new();
 
         for entry in iter {

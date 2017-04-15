@@ -38,7 +38,9 @@ impl Entry {
 
 impl Ord for Entry {
     fn cmp(&self, other: &Self) -> Ordering {
-        self.timestamp.cmp(&other.timestamp).then(self.id.cmp(&other.id))
+        self.timestamp
+            .cmp(&other.timestamp)
+            .then(self.id.cmp(&other.id))
     }
 }
 

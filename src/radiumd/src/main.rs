@@ -12,12 +12,12 @@ use libradium::command::Listener;
 use libradium::frontend::Frontend;
 
 struct TestListener {
-    tx: Sender<Output>
+    tx: Sender<Output>,
 }
 
 enum Output {
     Expired(Entry),
-    Tick
+    Tick,
 }
 
 impl Listener for TestListener {
@@ -38,21 +38,40 @@ fn main() {
     let now = precise_time_ns();
 
     frontend.add_entry(Entry::gen(now)).unwrap();
-    frontend.add_entry(Entry::gen(now + 1000000000 * 2)).unwrap();
-    frontend.add_entry(Entry::gen(now + 1000000000 * 4)).unwrap();
-    frontend.add_entry(Entry::gen(now + 1000000000 * 6)).unwrap();
-    frontend.add_entry(Entry::gen(now + 1000000000 * 6)).unwrap();
-    frontend.add_entry(Entry::gen(now + 1000000000 * 6)).unwrap();
-    frontend.add_entry(Entry::gen(now + 1000000000 * 6)).unwrap();
-    frontend.add_entry(Entry::gen(now + 1000000000 * 6)).unwrap();
-    frontend.add_entry(Entry::gen(now + 1000000000 * 10)).unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 1000000000 * 2))
+        .unwrap();
+    frontend
+        .add_entry(Entry::gen(now + 1000000000 * 4))
+        .unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 1000000000 * 6))
+        .unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 1000000000 * 6))
+        .unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 1000000000 * 6))
+        .unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 1000000000 * 6))
+        .unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 1000000000 * 10))
+        .unwrap();
 
     loop {
         match rx_listener.recv().unwrap() {
             Output::Expired(entry) => {
                 print!("({:?})", (entry.timestamp() as f64) / 1000000000.);
                 io::stdout().flush().unwrap();
-            },
+            }
             Output::Tick => {
                 print!(".");
             }

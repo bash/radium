@@ -8,5 +8,5 @@ pub trait Listener: Send {
 #[derive(Debug)]
 pub enum Command {
     AddEntry(Entry),
-    RemoveEntry(Entry)
+    RemoveEntry(Entry),
 }

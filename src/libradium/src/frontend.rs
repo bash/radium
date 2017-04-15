@@ -10,7 +10,7 @@ use super::command::{Command, Listener};
 pub type CommandResult = Result<(), SendError<Command>>;
 
 pub struct Frontend {
-    tx: Sender<Command>
+    tx: Sender<Command>,
 }
 
 impl Frontend {
