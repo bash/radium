@@ -47,13 +47,14 @@ impl Worker {
         self.check_expired();
 
         loop {
-            let incoming = self.receiver.recv_timeout(Duration::from_millis(RECV_TIMEOUT));
+            let incoming = self.receiver
+                .recv_timeout(Duration::from_millis(RECV_TIMEOUT));
 
             self.listener.on_tick();
 
             match incoming {
                 Err(err) => self.handle_error(err),
-                Ok(command) => self.handle_command(command)
+                Ok(command) => self.handle_command(command),
             }
 
             if self.needs_checking() {
