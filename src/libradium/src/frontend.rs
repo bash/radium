@@ -5,7 +5,7 @@ use std::thread;
 use super::storage::Storage;
 use super::entry::Entry;
 use super::worker;
-use super::command::{Command, Listener};
+use super::worker::{Command, Listener};
 
 pub type CommandResult = Result<(), SendError<Command>>;
 

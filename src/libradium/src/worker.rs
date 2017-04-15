@@ -2,7 +2,7 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
-use super::command::{Command, Listener};
+use super::entry::Entry;
 use super::storage::Storage;
 
 ///
@@ -14,6 +14,17 @@ const CHECK_INTERVAL: u64 = 1;
 /// Receive timeout for incoming messages in milliseconds
 ///
 const RECV_TIMEOUT: u64 = 500;
+
+pub trait Listener: Send {
+    fn on_expired(&self, entry: Entry);
+    fn on_tick(&self) {}
+}
+
+#[derive(Debug)]
+pub enum Command {
+    AddEntry(Entry),
+    RemoveEntry(Entry),
+}
 
 pub struct Worker {
     storage: Storage,
