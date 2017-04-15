@@ -1,14 +1,14 @@
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::thread;
 use std::time::Duration;
-use time::precise_time_ns;
+use std::time::Instant;
 use super::command::{Command, Listener};
 use super::storage::Storage;
 
 ///
-/// Minimum duration between expiration checks in nanoseconds
+/// Minimum duration between expiration checks in seconds
 ///
-const CHECK_INTERVAL: u64 = 1000000000;
+const CHECK_INTERVAL: u64 = 1;
 
 ///
 /// Receive timeout for incoming messages in milliseconds
@@ -19,7 +19,7 @@ pub struct Worker {
     storage: Storage,
     receiver: Receiver<Command>,
     listener: Box<Listener>,
-    last_checked: Option<u64>,
+    last_checked: Option<Instant>,
 }
 
 pub fn spawn(storage: Storage,
@@ -50,14 +50,13 @@ impl Worker {
             let incoming = self.receiver
                 .recv_timeout(Duration::from_millis(RECV_TIMEOUT));
 
-            self.listener.on_tick();
-
             match incoming {
                 Err(err) => self.handle_error(err),
                 Ok(command) => self.handle_command(command),
             }
 
             if self.needs_checking() {
+                self.listener.on_tick();
                 self.check_expired();
             }
         }
@@ -82,7 +81,7 @@ impl Worker {
     }
 
     fn check_expired(&mut self) {
-        self.last_checked = Some(precise_time_ns());
+        self.last_checked = Some(Instant::now());
 
         for entry in self.storage.expired_entries() {
             self.listener.on_expired(entry);
@@ -94,7 +93,7 @@ impl Worker {
         match self.last_checked {
             None => true,
             Some(value) => {
-                return (precise_time_ns() - value) >= CHECK_INTERVAL;
+                return value.elapsed().as_secs() >= CHECK_INTERVAL;
             }
         }
     }

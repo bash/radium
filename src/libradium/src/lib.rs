@@ -4,7 +4,7 @@ extern crate rand;
 extern crate threadpool;
 extern crate num_cpus;
 extern crate byteorder;
-extern crate time;
+pub extern crate time;
 
 #[macro_use]
 mod macros;

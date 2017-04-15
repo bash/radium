@@ -1,8 +1,7 @@
 use std::collections::BTreeSet;
 use std::collections::btree_set::Iter;
 use std::iter::Iterator;
-use super::entry::Entry;
-use time::precise_time_ns;
+use super::entry::{Entry, Timestamp};
 
 #[derive(Debug)]
 pub struct Storage {
@@ -29,8 +28,9 @@ impl Storage {
     pub fn expired_entries(&self) -> Vec<Entry> {
         let iter = ExpiredItems {
             iter: self.entries.iter(),
-            timestamp: precise_time_ns(),
+            timestamp: Timestamp::now(),
         };
+
         let mut entries = Vec::<Entry>::new();
 
         for entry in iter {
@@ -43,7 +43,7 @@ impl Storage {
 
 pub struct ExpiredItems<'a> {
     iter: Iter<'a, Entry>,
-    timestamp: u64,
+    timestamp: Timestamp,
 }
 
 impl<'a> Iterator for ExpiredItems<'a> {
