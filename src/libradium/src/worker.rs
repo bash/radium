@@ -1,69 +1,100 @@
-use threadpool::ThreadPool;
-use std::net::TcpStream;
-use std::sync::{Arc, Mutex};
-use num_cpus;
-use super::backend::{Backend, SharedBackend};
-use super::actions::{action, Action, WrappedAction};
-use super::connection::ConnectionMode;
-use super::io::{ReadFrom, WriteTo};
+use std::sync::mpsc::{Receiver, RecvTimeoutError};
+use std::thread;
+use std::time::Duration;
+use std::time::Instant;
+use super::command::{Command, Listener};
+use super::storage::Storage;
 
-fn get_num_workers() -> usize {
-    let cores = num_cpus::get();
+///
+/// Minimum duration between expiration checks in seconds
+///
+const CHECK_INTERVAL: u64 = 1;
 
-    match cores {
-        1 => 1,
-        _ => cores - 1,
-    }
-}
-
-fn receive_actions(mut stream: TcpStream, backend: SharedBackend) {
-    loop {
-        let backend = backend.clone();
-        let action = action(&mut stream).unwrap();
-
-        println!("Receive {:?}", action);
-
-        if let WrappedAction::Close(_) = action {
-            return;
-        }
-
-        let resp = action.perform(backend);
-
-        resp.write_to(&mut stream).unwrap();
-    }
-}
-
-fn register_listener(stream: TcpStream, backend: SharedBackend) {
-    let mut backend = backend.lock().unwrap();
-
-    backend.add_listener(stream);
-}
+///
+/// Receive timeout for incoming messages in milliseconds
+///
+const RECV_TIMEOUT: u64 = 500;
 
 pub struct Worker {
-    pool: ThreadPool,
-    backend: SharedBackend,
+    storage: Storage,
+    receiver: Receiver<Command>,
+    listener: Box<Listener>,
+    last_checked: Option<Instant>,
+}
+
+pub fn spawn(storage: Storage,
+             receiver: Receiver<Command>,
+             listener: Box<Listener>)
+             -> thread::JoinHandle<()> {
+    thread::spawn(move || {
+        let worker = Worker::new(storage, receiver, listener);
+
+        worker.run();
+    })
 }
 
 impl Worker {
-    pub fn new(backend: Backend) -> Self {
+    pub fn new(storage: Storage, receiver: Receiver<Command>, listener: Box<Listener>) -> Worker {
         Worker {
-            pool: ThreadPool::new(get_num_workers()),
-            backend: Arc::new(Mutex::new(backend)),
+            storage,
+            receiver,
+            listener,
+            last_checked: None,
         }
     }
 
-    pub fn handle_client(&self, mut stream: TcpStream) {
-        let backend = self.backend.clone();
+    pub fn run(mut self) -> thread::JoinHandle<()> {
+        self.check_expired();
 
-        self.pool.execute(move || {
-            let mode = ConnectionMode::read_from(&mut stream).unwrap();
+        loop {
+            let incoming = self.receiver
+                .recv_timeout(Duration::from_millis(RECV_TIMEOUT));
 
-            println!("{:?}", mode);
-
-            match mode {
-                ConnectionMode::Action => receive_actions(stream, backend),
-                ConnectionMode::Listen => register_listener(stream, backend),
+            match incoming {
+                Err(err) => self.handle_error(err),
+                Ok(command) => self.handle_command(command),
             }
-        });
+
+            if self.needs_checking() {
+                self.listener.on_tick();
+                self.check_expired();
+            }
+        }
+    }
+
+    fn handle_error(&self, err: RecvTimeoutError) {
+        match err {
+            RecvTimeoutError::Timeout => {}
+            RecvTimeoutError::Disconnected => panic!("channel disconnected"),
+        }
+    }
+
+    fn handle_command(&mut self, command: Command) {
+        match command {
+            Command::AddEntry(entry) => {
+                self.storage.add_entry(entry);
+            }
+            Command::RemoveEntry(entry) => {
+                self.storage.remove_entry(&entry);
+            }
+        }
+    }
+
+    fn check_expired(&mut self) {
+        self.last_checked = Some(Instant::now());
+
+        for entry in self.storage.expired_entries() {
+            self.listener.on_expired(entry);
+            self.storage.remove_entry(&entry);
+        }
+    }
+
+    fn needs_checking(&self) -> bool {
+        match self.last_checked {
+            None => true,
+            Some(value) => {
+                return value.elapsed().as_secs() >= CHECK_INTERVAL;
+            }
+        }
     }
 }

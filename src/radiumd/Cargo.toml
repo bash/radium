@@ -5,3 +5,4 @@ authors = ["Ruben Schmidmeister <ruben.schmidmeister@icloud.com>"]
 
 [dependencies]
 libradium = { path = "../libradium" }
+time = "0.1"
