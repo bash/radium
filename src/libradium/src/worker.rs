@@ -54,7 +54,7 @@ impl Worker {
         }
     }
 
-    pub fn run(mut self) -> thread::JoinHandle<()> {
+    pub fn run(mut self) {
         self.check_expired();
 
         loop {
