@@ -8,7 +8,7 @@ use std::sync::mpsc::{Sender, Receiver};
 use libradium::{Entry, Timestamp, Listener, Frontend};
 
 struct User {
-    age: u16
+    age: u16,
 }
 
 impl User {
@@ -47,14 +47,37 @@ fn main() {
 
     let now = Timestamp::now();
 
-    frontend.add_entry(Entry::gen(now, User::new(10))).unwrap();
-    frontend.add_entry(Entry::gen(now + 2, User::new(20))).unwrap();
-    frontend.add_entry(Entry::gen(now + 4, User::new(30))).unwrap();
-    frontend.add_entry(Entry::gen(now + 6, User::new(40))).unwrap();
-    frontend.add_entry(Entry::gen(now + 6, User::new(50))).unwrap();
-    frontend.add_entry(Entry::gen(now + 6, User::new(60))).unwrap();
-    frontend.add_entry(Entry::gen(now + 6, User::new(70))).unwrap();
-    frontend.add_entry(Entry::gen(now + 10, User::new(80))).unwrap();
+    frontend
+        .add_entry(Entry::gen(now, User::new(10)))
+        .unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 2, User::new(20)))
+        .unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 4, User::new(30)))
+        .unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 6, User::new(40)))
+        .unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 6, User::new(50)))
+        .unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 6, User::new(60)))
+        .unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 6, User::new(70)))
+        .unwrap();
+
+    frontend
+        .add_entry(Entry::gen(now + 10, User::new(80)))
+        .unwrap();
 
     loop {
         match rx_listener.recv().unwrap() {

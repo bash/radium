@@ -34,9 +34,9 @@ pub struct Worker<T: Send + 'static> {
 }
 
 pub fn spawn_worker<T: Send + 'static>(storage: Storage<T>,
-             receiver: Receiver<Command<T>>,
-             listener: Box<Listener<T>>)
-             -> thread::JoinHandle<()> {
+                                       receiver: Receiver<Command<T>>,
+                                       listener: Box<Listener<T>>)
+                                       -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let worker = Worker::new(storage, receiver, listener);
 
@@ -45,7 +45,10 @@ pub fn spawn_worker<T: Send + 'static>(storage: Storage<T>,
 }
 
 impl<T: Send + 'static> Worker<T> {
-    pub fn new(storage: Storage<T>, receiver: Receiver<Command<T>>, listener: Box<Listener<T>>) -> Worker<T> {
+    pub fn new(storage: Storage<T>,
+               receiver: Receiver<Command<T>>,
+               listener: Box<Listener<T>>)
+               -> Worker<T> {
         Worker {
             storage,
             receiver,

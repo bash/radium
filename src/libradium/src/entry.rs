@@ -73,7 +73,10 @@ pub struct Entry<T: Send + 'static> {
 
 impl EntryId {
     pub fn new<TS: Into<Timestamp>>(timestamp: TS, id: u16) -> Self {
-        EntryId { timestamp: timestamp.into(), id }
+        EntryId {
+            timestamp: timestamp.into(),
+            id,
+        }
     }
 
     /// Creates a new `EntryId` with a random value for `id`
