@@ -48,27 +48,28 @@ impl Add<i64> for Timestamp {
     }
 }
 
-#[derive(Debug)]
-pub struct Entry<T: Send + 'static> {
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd)]
+pub struct EntryId {
     timestamp: Timestamp,
     id: u16,
-    data: T
 }
 
-impl<T: Send + 'static> Entry<T> {
-    pub fn new<TS: Into<Timestamp>>(timestamp: TS, id: u16, data: T) -> Self {
-        Entry {
-            timestamp: timestamp.into(),
-            id,
-            data
-        }
+#[derive(Debug)]
+pub struct Entry<T: Send + 'static> {
+    id: EntryId,
+    data: T,
+}
+
+impl EntryId {
+    pub fn new<TS: Into<Timestamp>>(timestamp: TS, id: u16) -> Self {
+        EntryId { timestamp: timestamp.into(), id }
     }
 
-    pub fn gen<TS: Into<Timestamp>>(timestamp: TS, data: T) -> Self {
+    pub fn gen<TS: Into<Timestamp>>(timestamp: TS) -> Self {
         let mut rng = rand::thread_rng();
         let id = rng.gen::<u16>();
 
-        Self::new(timestamp, id, data)
+        Self::new(timestamp, id)
     }
 
     pub fn timestamp(&self) -> Timestamp {
@@ -76,6 +77,20 @@ impl<T: Send + 'static> Entry<T> {
     }
 
     pub fn id(&self) -> u16 {
+        self.id
+    }
+}
+
+impl<T: Send + 'static> Entry<T> {
+    pub fn new(id: EntryId, data: T) -> Self {
+        Entry { id, data }
+    }
+
+    pub fn gen<TS: Into<Timestamp>>(timestamp: TS, data: T) -> Self {
+        Self::new(EntryId::gen(timestamp), data)
+    }
+
+    pub fn id(&self) -> EntryId {
         self.id
     }
 

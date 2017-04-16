@@ -2,7 +2,7 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
-use super::entry::Entry;
+use super::entry::{Entry, EntryId};
 use super::storage::Storage;
 
 ///
@@ -23,7 +23,7 @@ pub trait Listener<T: Send + 'static>: Send {
 #[derive(Debug)]
 pub enum Command<T: Send + 'static> {
     AddEntry(Entry<T>),
-    RemoveEntry(Entry<T>),
+    RemoveEntry(EntryId),
 }
 
 pub struct Worker<T: Send + 'static> {
@@ -85,8 +85,8 @@ impl<T: Send + 'static> Worker<T> {
             Command::AddEntry(entry) => {
                 self.storage.add_entry(entry);
             }
-            Command::RemoveEntry(entry) => {
-                self.storage.remove_entry(&entry);
+            Command::RemoveEntry(id) => {
+                self.storage.remove_entry(id);
             }
         }
     }

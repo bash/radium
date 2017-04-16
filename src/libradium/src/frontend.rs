@@ -3,7 +3,7 @@ use std::sync::mpsc::{Sender, Receiver, SendError};
 use std::thread;
 
 use super::storage::Storage;
-use super::entry::Entry;
+use super::entry::{Entry, EntryId};
 use super::worker;
 use super::worker::{Command, Listener};
 
@@ -30,8 +30,8 @@ impl<T: Send + 'static> Frontend<T> {
         self.command(Command::AddEntry(entry))
     }
 
-    pub fn remove_entry(&self, entry: Entry<T>) -> CommandResult<T> {
-        self.command(Command::RemoveEntry(entry))
+    pub fn remove_entry(&self, id: EntryId) -> CommandResult<T> {
+        self.command(Command::RemoveEntry(id))
     }
 
     fn command(&self, command: Command<T>) -> CommandResult<T> {

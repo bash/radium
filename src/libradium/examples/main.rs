@@ -61,7 +61,7 @@ fn main() {
     loop {
         match rx_listener.recv().unwrap() {
             Output::Expired(entry) => {
-                print!("({:?}, {})", entry.timestamp().sec, entry.data().age());
+                print!("({:?}, {})", entry.id().timestamp().sec, entry.data().age());
                 io::stdout().flush().unwrap();
             }
             Output::Tick => {
