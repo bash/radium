@@ -1,5 +1,3 @@
-#![crate_name = "libradium"]
-
 extern crate rand;
 pub extern crate time;
 
