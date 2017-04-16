@@ -9,13 +9,13 @@ use libradium::entry::{Entry, Timestamp};
 use libradium::worker::Listener;
 use libradium::frontend::Frontend;
 
-struct Data {
+struct User {
     age: u16
 }
 
-impl Data {
+impl User {
     pub fn new(age: u16) -> Self {
-        Data { age }
+        User { age }
     }
 
     pub fn age(&self) -> u16 {
@@ -28,12 +28,12 @@ struct TestListener {
 }
 
 enum Output {
-    Expired(Entry<Data>),
+    Expired(Entry<User>),
     Tick,
 }
 
-impl Listener<Data> for TestListener {
-    fn on_expired(&self, entry: Entry<Data>) {
+impl Listener<User> for TestListener {
+    fn on_expired(&self, entry: Entry<User>) {
         self.tx.send(Output::Expired(entry)).unwrap();
     }
 
@@ -49,14 +49,14 @@ fn main() {
 
     let now = Timestamp::now();
 
-    frontend.add_entry(Entry::gen(now, Data::new(10))).unwrap();
-    frontend.add_entry(Entry::gen(now + 2, Data::new(20))).unwrap();
-    frontend.add_entry(Entry::gen(now + 4, Data::new(30))).unwrap();
-    frontend.add_entry(Entry::gen(now + 6, Data::new(40))).unwrap();
-    frontend.add_entry(Entry::gen(now + 6, Data::new(50))).unwrap();
-    frontend.add_entry(Entry::gen(now + 6, Data::new(60))).unwrap();
-    frontend.add_entry(Entry::gen(now + 6, Data::new(70))).unwrap();
-    frontend.add_entry(Entry::gen(now + 10, Data::new(80))).unwrap();
+    frontend.add_entry(Entry::gen(now, User::new(10))).unwrap();
+    frontend.add_entry(Entry::gen(now + 2, User::new(20))).unwrap();
+    frontend.add_entry(Entry::gen(now + 4, User::new(30))).unwrap();
+    frontend.add_entry(Entry::gen(now + 6, User::new(40))).unwrap();
+    frontend.add_entry(Entry::gen(now + 6, User::new(50))).unwrap();
+    frontend.add_entry(Entry::gen(now + 6, User::new(60))).unwrap();
+    frontend.add_entry(Entry::gen(now + 6, User::new(70))).unwrap();
+    frontend.add_entry(Entry::gen(now + 10, User::new(80))).unwrap();
 
     loop {
         match rx_listener.recv().unwrap() {
