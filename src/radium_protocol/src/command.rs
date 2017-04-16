@@ -82,9 +82,7 @@ impl AddEntry {
         target.write_i64::<BigEndian>(self.timestamp)?;
         target.write_u16::<BigEndian>(len as u16)?;
 
-        for byte in &self.data {
-            target.write_u8(*byte)?;
-        }
+        target.write(&self.data)?;
 
         Ok(())
     }
