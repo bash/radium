@@ -15,27 +15,27 @@ const CHECK_INTERVAL: u64 = 1;
 ///
 const RECV_TIMEOUT: u64 = 500;
 
-pub trait Listener: Send {
-    fn on_expired(&self, entry: Entry);
+pub trait Listener<T: Send + 'static>: Send {
+    fn on_expired(&self, entry: Entry<T>);
     fn on_tick(&self) {}
 }
 
 #[derive(Debug)]
-pub enum Command {
-    AddEntry(Entry),
-    RemoveEntry(Entry),
+pub enum Command<T: Send + 'static> {
+    AddEntry(Entry<T>),
+    RemoveEntry(Entry<T>),
 }
 
-pub struct Worker {
-    storage: Storage,
-    receiver: Receiver<Command>,
-    listener: Box<Listener>,
+pub struct Worker<T: Send + 'static> {
+    storage: Storage<T>,
+    receiver: Receiver<Command<T>>,
+    listener: Box<Listener<T>>,
     last_checked: Option<Instant>,
 }
 
-pub fn spawn(storage: Storage,
-             receiver: Receiver<Command>,
-             listener: Box<Listener>)
+pub fn spawn<T: Send + 'static>(storage: Storage<T>,
+             receiver: Receiver<Command<T>>,
+             listener: Box<Listener<T>>)
              -> thread::JoinHandle<()> {
     thread::spawn(move || {
         let worker = Worker::new(storage, receiver, listener);
@@ -44,8 +44,8 @@ pub fn spawn(storage: Storage,
     })
 }
 
-impl Worker {
-    pub fn new(storage: Storage, receiver: Receiver<Command>, listener: Box<Listener>) -> Worker {
+impl<T: Send + 'static> Worker<T> {
+    pub fn new(storage: Storage<T>, receiver: Receiver<Command<T>>, listener: Box<Listener<T>>) -> Worker<T> {
         Worker {
             storage,
             receiver,
@@ -80,7 +80,7 @@ impl Worker {
         }
     }
 
-    fn handle_command(&mut self, command: Command) {
+    fn handle_command(&mut self, command: Command<T>) {
         match command {
             Command::AddEntry(entry) => {
                 self.storage.add_entry(entry);
@@ -94,9 +94,8 @@ impl Worker {
     fn check_expired(&mut self) {
         self.last_checked = Some(Instant::now());
 
-        for entry in self.storage.expired_entries() {
+        for entry in self.storage.expire_entries() {
             self.listener.on_expired(entry);
-            self.storage.remove_entry(&entry);
         }
     }
 

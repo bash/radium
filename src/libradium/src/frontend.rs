@@ -7,34 +7,34 @@ use super::entry::Entry;
 use super::worker;
 use super::worker::{Command, Listener};
 
-pub type CommandResult = Result<(), SendError<Command>>;
+pub type CommandResult<T> = Result<(), SendError<Command<T>>>;
 
-pub struct Frontend {
-    tx: Sender<Command>,
+pub struct Frontend<T: Send + 'static> {
+    tx: Sender<Command<T>>,
 }
 
-impl Frontend {
-    pub fn new(tx: Sender<Command>) -> Frontend {
+impl<T: Send + 'static> Frontend<T> {
+    pub fn new(tx: Sender<Command<T>>) -> Self {
         Frontend { tx }
     }
 
-    pub fn build(listener: Box<Listener>) -> (Frontend, thread::JoinHandle<()>) {
-        let (tx, rx): (Sender<Command>, Receiver<Command>) = mpsc::channel();
+    pub fn build(listener: Box<Listener<T>>) -> (Self, thread::JoinHandle<()>) {
+        let (tx, rx): (Sender<Command<T>>, Receiver<Command<T>>) = mpsc::channel();
         let storage = Storage::new();
         let handle = worker::spawn(storage, rx, listener);
 
         (Self::new(tx), handle)
     }
 
-    pub fn add_entry(&self, entry: Entry) -> CommandResult {
+    pub fn add_entry(&self, entry: Entry<T>) -> CommandResult<T> {
         self.command(Command::AddEntry(entry))
     }
 
-    pub fn remove_entry(&self, entry: Entry) -> CommandResult {
+    pub fn remove_entry(&self, entry: Entry<T>) -> CommandResult<T> {
         self.command(Command::RemoveEntry(entry))
     }
 
-    fn command(&self, command: Command) -> CommandResult {
+    fn command(&self, command: Command<T>) -> CommandResult<T> {
         self.tx.send(command)
     }
 }

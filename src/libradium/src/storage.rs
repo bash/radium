@@ -1,61 +1,55 @@
-use std::collections::BTreeSet;
-use std::collections::btree_set::Iter;
-use std::iter::Iterator;
+use std::collections::BTreeMap;
 use super::entry::{Entry, Timestamp};
 
+type EntryId = (Timestamp, u16);
+
 #[derive(Debug)]
-pub struct Storage {
-    entries: BTreeSet<Entry>,
+pub struct Storage<T: Send + 'static> {
+    entries: BTreeMap<EntryId, Entry<T>>,
 }
 
-impl Storage {
+impl<T: Send + 'static> Storage<T> {
     pub fn new() -> Self {
-        Storage { entries: BTreeSet::new() }
+        Storage { entries: BTreeMap::new() }
     }
 
-    pub fn add_entry(&mut self, entry: Entry) {
-        self.entries.insert(entry);
+    pub fn add_entry(&mut self, entry: Entry<T>) {
+        self.entries.insert((entry.timestamp(), entry.id()), entry);
     }
 
-    pub fn has_entry(&self, entry: &Entry) -> bool {
-        self.entries.contains(entry)
+    pub fn has_entry(&self, entry: &Entry<T>) -> bool {
+        self.entries.contains_key(&(entry.timestamp(), entry.id()))
     }
 
-    pub fn remove_entry(&mut self, entry: &Entry) {
-        self.entries.remove(entry);
+    pub fn remove_entry(&mut self, entry: &Entry<T>) -> Option<Entry<T>> {
+        self.entries.remove(&(entry.timestamp(), entry.id()))
     }
 
-    pub fn expired_entries(&self) -> Vec<Entry> {
-        let iter = ExpiredItems {
-            iter: self.entries.iter(),
-            timestamp: Timestamp::now(),
-        };
+    fn remove_by_id(&mut self, id: &EntryId) -> Option<Entry<T>> {
+        self.entries.remove(id)
+    }
 
-        let mut entries = Vec::<Entry>::new();
+    pub fn expire_entries(&mut self) -> Vec<Entry<T>> {
+        let mut entries = Vec::<Entry<T>>::new();
+        let now = Timestamp::now();
+        let mut expired = Vec::<EntryId>::new();
 
-        for entry in iter {
-            entries.push(entry);
+        // This is the best solution I came up with
+        // but it still bugs me that we have to iterate twice
+        for id in self.entries.keys() {
+            if id.0 > now {
+                break;
+            }
+
+            expired.push(*id);
+        }
+
+        for id in expired {
+            // We can safely unwrap here because we know that
+            // the item we're trying to remove actually exists
+            entries.push(self.remove_by_id(&id).unwrap());
         }
 
         return entries;
-    }
-}
-
-struct ExpiredItems<'a> {
-    iter: Iter<'a, Entry>,
-    timestamp: Timestamp,
-}
-
-impl<'a> Iterator for ExpiredItems<'a> {
-    type Item = Entry;
-
-    fn next(&mut self) -> Option<Entry> {
-        let entry = maybe!(self.iter.next());
-
-        if self.timestamp <= entry.timestamp() {
-            return None;
-        }
-
-        Some(*entry)
     }
 }
