@@ -1,7 +1,5 @@
-extern crate rand;
-
 use std::ops::Add;
-use rand::Rng;
+use rand::{Rng, thread_rng};
 use time::{Timespec, get_time};
 
 ///
@@ -66,7 +64,7 @@ impl EntryId {
     }
 
     pub fn gen<TS: Into<Timestamp>>(timestamp: TS) -> Self {
-        let mut rng = rand::thread_rng();
+        let mut rng = thread_rng();
         let id = rng.gen::<u16>();
 
         Self::new(timestamp, id)
