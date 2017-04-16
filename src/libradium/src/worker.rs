@@ -33,7 +33,7 @@ pub struct Worker<T: Send + 'static> {
     last_checked: Option<Instant>,
 }
 
-pub fn spawn<T: Send + 'static>(storage: Storage<T>,
+pub fn spawn_worker<T: Send + 'static>(storage: Storage<T>,
              receiver: Receiver<Command<T>>,
              listener: Box<Listener<T>>)
              -> thread::JoinHandle<()> {

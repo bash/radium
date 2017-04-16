@@ -4,8 +4,7 @@ use std::thread;
 
 use super::storage::Storage;
 use super::entry::{Entry, EntryId};
-use super::worker;
-use super::worker::{Command, Listener};
+use super::worker::{Command, Listener, spawn_worker};
 
 pub type CommandResult<T> = Result<(), SendError<Command<T>>>;
 
@@ -21,7 +20,7 @@ impl<T: Send + 'static> Frontend<T> {
     pub fn build(listener: Box<Listener<T>>) -> (Self, thread::JoinHandle<()>) {
         let (tx, rx): (Sender<Command<T>>, Receiver<Command<T>>) = mpsc::channel();
         let storage = Storage::new();
-        let handle = worker::spawn(storage, rx, listener);
+        let handle = spawn_worker(storage, rx, listener);
 
         (Self::new(tx), handle)
     }

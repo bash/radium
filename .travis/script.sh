@@ -8,5 +8,6 @@ do
 
     cargo fmt -- --write-mode=diff
     cargo build
+    cargo build --example main
     cargo test
 done

@@ -5,9 +5,7 @@ use std::io::prelude::*;
 use std::io;
 use std::sync::mpsc::{Sender, Receiver};
 
-use libradium::entry::{Entry, Timestamp};
-use libradium::worker::Listener;
-use libradium::frontend::Frontend;
+use libradium::{Entry, Timestamp, Listener, Frontend};
 
 struct User {
     age: u16
