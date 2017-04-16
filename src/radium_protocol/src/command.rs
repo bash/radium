@@ -75,7 +75,6 @@ impl AddEntry {
         let len = self.data.len();
 
         if len > u16::max_value() as usize {
-            // TODO: we need a better error here
             return Err(io::Error::new(io::ErrorKind::Other, WriteError::DataLengthOverflow))
         }
 
@@ -110,9 +109,7 @@ mod test {
         let cmd = Command::Ping;
         let mut vec = Vec::new();
 
-        cmd.write_to(&mut vec);
-
-        /// cmd: u8
+        assert!(cmd.write_to(&mut vec).is_ok());
         assert_eq!(vec![0], vec);
     }
 
@@ -138,7 +135,7 @@ mod test {
     fn test_add_entry_checks_size() {
         let mut data = Vec::<u8>::new();
 
-        for _ in 0..((u16::max_value() as u32) + 20) {
+        for _ in 0..((u16::max_value() as u32) + 1) {
             data.push(0);
         }
 

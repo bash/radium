@@ -1,8 +1,7 @@
 extern crate byteorder;
 
 mod command;
+mod connection;
 
-pub enum ConnectionType {
-    Command,
-    Listen,
-}
+pub use connection::*;
+pub use command::*;
