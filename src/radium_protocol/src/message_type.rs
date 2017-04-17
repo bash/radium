@@ -23,6 +23,10 @@ impl MessageType {
             _ => false
         }
     }
+
+    pub fn to_u8(self) -> u8 {
+        self.into()
+    }
 }
 
 impl ReadFrom for MessageType {

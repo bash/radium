@@ -25,6 +25,7 @@ impl RemoveEntry {
 mod test {
     use super::*;
     use super::super::super::Message;
+    use super::super::super::WriteTo;
 
     #[test]
     fn test_remove_entry() {
