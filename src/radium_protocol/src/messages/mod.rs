@@ -1,5 +1,5 @@
 mod entry;
-mod remove_entry;
+mod entry_id;
 
 pub use self::entry::*;
-pub use self::remove_entry::*;
+pub use self::entry_id::*;
