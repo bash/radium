@@ -1,7 +1,7 @@
 use std::io;
 use byteorder::WriteBytesExt;
 use super::{MessageType, WriteTo};
-use super::messages::{AddEntry, EntryExpired, Entry, RemoveEntry};
+use super::messages::{AddEntry, EntryExpired, RemoveEntry};
 
 pub enum Message {
     Ping,
@@ -18,6 +18,7 @@ impl Message {
             &Message::Ping => MessageType::Ping,
             &Message::AddEntry(_) => MessageType::AddEntry,
             &Message::RemoveEntry(_) => MessageType::RemoveEntry,
+            &Message::EntryExpired(_) => MessageType::EntryExpired,
             _ => panic!("invalid Message")
         }
     }
@@ -25,14 +26,17 @@ impl Message {
     pub fn is_command(&self) -> bool {
         self.message_type().is_command()
     }
+}
 
-    pub fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
+impl WriteTo for Message {
+    fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
         target.write_u8(self.message_type().into())?;
 
         match self {
             &Message::Ping => Ok(()),
-            &Message::RemoveEntry(ref cmd) => cmd.write_to(target),
-            &Message::AddEntry(ref cmd) => cmd.write_to(target),
+            &Message::RemoveEntry(ref msg) => msg.write_to(target),
+            &Message::AddEntry(ref msg) => msg.write_to(target),
+            &Message::EntryExpired(ref msg) => msg.write_to(target),
             _ => panic!("invalid Message")
         }
     }
