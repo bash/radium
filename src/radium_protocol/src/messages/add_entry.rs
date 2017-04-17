@@ -58,7 +58,7 @@ mod test {
 
         assert_eq!(
             vec![
-                /* cmd  */ 1,
+                /* cmd  */ 2,
                 /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
                 /* len  */ 0, 3,
                 /* data */ 1, 2, 3
