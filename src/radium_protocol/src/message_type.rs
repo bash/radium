@@ -15,6 +15,15 @@ pub enum MessageType {
     __NonExhaustive,
 }
 
+impl MessageType {
+    pub fn is_command(self) -> bool {
+        match self {
+            MessageType::Ping | MessageType::AddEntry | MessageType::RemoveEntry => true,
+            _ => false
+        }
+    }
+}
+
 impl ReadFrom for MessageType {
     fn read_from<R: io::Read>(source: &mut R) -> Result<Self, ReadError> {
         let value = source.read_u8()?;
@@ -64,7 +73,7 @@ mod test {
     use super::*;
 
     macro_rules! test_message_type {
-        ($test:ident, $msg:expr, $value:expr) => {
+        ($test:ident, $msg:expr, $value:expr, $command:expr) => {
             #[test]
             fn $test() {
                 let mut buf = vec![];
@@ -73,16 +82,17 @@ mod test {
 
                 assert_eq!($value as u8, $msg.into());
                 assert_eq!($msg, MessageType::try_from($value as u8).unwrap());
+                assert_eq!($command, $msg.is_command());
 
                 assert_eq!($msg, MessageType::read_from(&mut [$value as u8].as_ref()).unwrap());
             }
         }
     }
 
-    test_message_type!(test_ping, MessageType::Ping, 0);
-    test_message_type!(test_pong, MessageType::Pong, 1);
-    test_message_type!(test_add_entry, MessageType::AddEntry, 2);
-    test_message_type!(test_entry_added, MessageType::EntryAdded, 3);
-    test_message_type!(test_remove_entry, MessageType::RemoveEntry, 4);
-    test_message_type!(test_entry_removed, MessageType::EntryRemoved, 5);
+    test_message_type!(test_ping, MessageType::Ping, 0, true);
+    test_message_type!(test_pong, MessageType::Pong, 1, false);
+    test_message_type!(test_add_entry, MessageType::AddEntry, 2, true);
+    test_message_type!(test_entry_added, MessageType::EntryAdded, 3, false);
+    test_message_type!(test_remove_entry, MessageType::RemoveEntry, 4, true);
+    test_message_type!(test_entry_removed, MessageType::EntryRemoved, 5, false);
 }

@@ -20,6 +20,10 @@ impl Message {
         }
     }
 
+    pub fn is_command(&self) -> bool {
+        self.message_type().is_command()
+    }
+
     pub fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
         target.write_u8(self.message_type().into())?;
 
