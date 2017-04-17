@@ -1,5 +1,6 @@
 use std::io;
-use byteorder::{WriteBytesExt, NetworkEndian};
+use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
+use super::super::{ReadFrom, WriteTo, ReadError};
 
 /// ts: i64 | id: u16
 pub struct RemoveEntry {
@@ -12,14 +13,32 @@ impl RemoveEntry {
         RemoveEntry { timestamp, id }
     }
 
-    pub fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
+    pub fn timestamp(&self) -> i64 {
+        self.timestamp
+    }
+
+    pub fn id(&self) -> u16 {
+        self.id
+    }
+}
+
+impl ReadFrom for RemoveEntry {
+    fn read_from<R: io::Read>(source: &mut R) -> Result<Self, ReadError> {
+        let timestamp = source.read_i64::<NetworkEndian>()?;
+        let id = source.read_u16::<NetworkEndian>()?;
+
+        Ok(RemoveEntry::new(timestamp, id))
+    }
+}
+
+impl WriteTo for RemoveEntry {
+    fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
         target.write_i64::<NetworkEndian>(self.timestamp)?;
         target.write_u16::<NetworkEndian>(self.id)?;
 
         Ok(())
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -28,19 +47,32 @@ mod test {
     use super::super::super::WriteTo;
 
     #[test]
-    fn test_remove_entry() {
-        let cmd = Message::RemoveEntry(RemoveEntry::new(12345, 23));
+    fn test_write() {
+        let msg = Message::RemoveEntry(RemoveEntry::new(12345, 23));
         let mut vec = Vec::<u8>::new();
 
-        assert!(cmd.write_to(&mut vec).is_ok());
+        assert!(msg.write_to(&mut vec).is_ok());
 
         assert_eq!(
-        vec![
-            /* cmd */ 4,
+            vec![
+                /* cmd */ 4,
+                /* ts  */ 0, 0, 0, 0, 0, 0, 48, 57,
+                /* id  */ 0, 23,
+            ],
+            vec
+        );
+    }
+
+    #[test]
+    fn test_read() {
+        let mut vec: Vec<u8> = vec![
             /* ts  */ 0, 0, 0, 0, 0, 0, 48, 57,
             /* id  */ 0, 23,
-        ],
-        vec
-        );
+        ];
+
+        let msg = RemoveEntry::read_from(&mut vec.as_mut_slice().as_ref()).unwrap();
+
+        assert_eq!(12345, msg.timestamp());
+        assert_eq!(23, msg.id());
     }
 }
