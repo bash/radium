@@ -9,6 +9,7 @@ pub enum TryFromError {
 #[derive(Debug)]
 pub enum ReadError {
     InvalidValue,
+    UnexpectedEof,
     IoError(io::Error),
 }
 
@@ -38,6 +39,7 @@ impl Error for ReadError {
     fn description(&self) -> &str {
         match self {
             &ReadError::InvalidValue => "invalid value",
+            &ReadError::UnexpectedEof => "unexpected eof",
             &ReadError::IoError(ref err) => err.description(),
         }
     }

@@ -1,6 +1,6 @@
 use std::io;
 use byteorder::WriteBytesExt;
-use super::{MessageType, AddEntry, RemoveEntry};
+use super::{MessageType, AddEntry, RemoveEntry, WriteTo};
 
 pub enum Message {
     Ping,

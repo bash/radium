@@ -1,13 +1,15 @@
 use std::io;
+use std::io::Read;
 use std::error::Error;
-use byteorder::{WriteBytesExt, BigEndian};
+use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
+use super::super::{ReadFrom, WriteTo, ReadError};
 
 #[derive(Debug)]
 enum AddEntryWriteError {
     DataLengthOverflow,
 }
 
-/// ts: i64 | len: u16 | data: (len)
+/// ts: i64 | len: u16 | data: (len < 2**16)
 pub struct AddEntry {
     timestamp: i64,
     data: Vec<u8>,
@@ -28,7 +30,33 @@ impl AddEntry {
         AddEntry { timestamp, data }
     }
 
-    pub fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
+    pub fn timestamp(&self) -> i64 {
+        self.timestamp
+    }
+
+    pub fn data(&self) -> &[u8] {
+        &self.data
+    }
+}
+
+impl ReadFrom for AddEntry {
+    fn read_from<R: io::Read>(source: &mut R) -> Result<Self, ReadError> {
+        let timestamp = source.read_i64::<BigEndian>()?;
+        let length = source.read_u16::<BigEndian>()? as u64;
+
+        let mut buf = Vec::new();
+        let bytes_read = source.take(length).read_to_end(&mut buf)?;
+
+        if (bytes_read as u64) < length {
+            return Err(ReadError::UnexpectedEof);
+        }
+
+        Ok(AddEntry::new(timestamp, buf))
+    }
+}
+
+impl WriteTo for AddEntry {
+    fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
         let len = self.data.len();
 
         if len > u16::max_value() as usize {
@@ -50,7 +78,50 @@ mod test {
     use super::super::super::Message;
 
     #[test]
-    fn test_add_entry() {
+    fn test_read() {
+        let mut source: Vec<u8> = vec![
+            /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
+            /* len  */ 0, 3,
+            /* data */ 1, 2, 3
+        ];
+
+        let msg = AddEntry::read_from(&mut source.as_mut_slice().as_ref()).unwrap();
+
+        assert_eq!(10, msg.timestamp());
+        assert_eq!(&[1, 2, 3], msg.data());
+        assert_eq!(3, msg.data().len());
+    }
+
+    #[test]
+    fn test_read_respects_size() {
+        let mut source: Vec<u8> = vec![
+            /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
+            /* len  */ 0, 3,
+            /* data */ 1, 2, 3, 4
+        ];
+
+        let msg = AddEntry::read_from(&mut source.as_mut_slice().as_ref()).unwrap();
+
+        assert_eq!(10, msg.timestamp());
+        assert_eq!(&[1, 2, 3], msg.data());
+        assert_eq!(3, msg.data().len());
+    }
+
+    #[test]
+    fn test_fails_on_data_eof() {
+        let mut source: Vec<u8> = vec![
+            /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
+            /* len  */ 0, 10,
+            /* data */ 1, 2, 3
+        ];
+
+        let result = AddEntry::read_from(&mut source.as_mut_slice().as_ref());
+
+        assert_eq!(ReadError::UnexpectedEof.description(), result.err().unwrap().description());
+    }
+
+    #[test]
+    fn test_write() {
         let cmd = Message::AddEntry(AddEntry::new(10, vec![1, 2, 3]));
         let mut vec = Vec::<u8>::new();
 
@@ -68,7 +139,7 @@ mod test {
     }
 
     #[test]
-    fn test_add_entry_checks_size() {
+    fn test_write_checks_size() {
         let mut data = Vec::<u8>::new();
 
         for _ in 0..((u16::max_value() as u32) + 1) {
