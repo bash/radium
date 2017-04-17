@@ -13,8 +13,6 @@ pub enum Message {
     // libradium, because the frontend does not block when adding or removing entries.
     EntryRemoved,
     EntryExpired(EntryExpired),
-    #[doc(hidden)]
-    __NonExhaustive,
 }
 
 impl Message {
@@ -27,7 +25,6 @@ impl Message {
             &Message::RemoveEntry(..) => MessageType::RemoveEntry,
             &Message::EntryRemoved => MessageType::EntryRemoved,
             &Message::EntryExpired(..) => MessageType::EntryExpired,
-            _ => panic!("invalid message")
         }
     }
 
@@ -48,7 +45,6 @@ impl ReadFrom for Message {
             MessageType::RemoveEntry => Ok(Message::RemoveEntry(RemoveEntry::read_from(source)?)),
             MessageType::EntryRemoved => Ok(Message::EntryRemoved),
             MessageType::EntryExpired => Ok(Message::EntryExpired(EntryExpired::read_from(source)?)),
-            _ => panic!("invalid message type")
         }
     }
 }
@@ -65,7 +61,6 @@ impl WriteTo for Message {
             &Message::RemoveEntry(ref msg) => msg.write_to(target),
             &Message::EntryRemoved => Ok(()),
             &Message::EntryExpired(ref msg) => msg.write_to(target),
-            _ => panic!("invalid message")
         }
     }
 }

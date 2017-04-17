@@ -12,8 +12,6 @@ pub enum MessageType {
     RemoveEntry,
     EntryRemoved,
     EntryExpired,
-    #[doc(hidden)]
-    __NonExhaustive,
 }
 
 impl MessageType {
@@ -53,7 +51,6 @@ impl Into<u8> for MessageType {
             MessageType::RemoveEntry => 4,
             MessageType::EntryRemoved => 5,
             MessageType::EntryExpired => 6,
-            _ => panic!("Invalid Message type"),
         }
     }
 }

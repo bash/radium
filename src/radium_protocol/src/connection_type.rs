@@ -7,9 +7,6 @@ use super::{ReadError, TryFromError, ReadFrom, WriteTo};
 pub enum ConnectionType {
     Command,
     Listen,
-    // Prevent exhaustive matching to allow for future extension
-    #[doc(hidden)]
-    __NonExhaustive,
 }
 
 impl WriteTo for ConnectionType {
@@ -43,7 +40,6 @@ impl Into<u8> for ConnectionType {
         match self {
             ConnectionType::Command => 0,
             ConnectionType::Listen => 1,
-            _ => panic!("invalid connection type"),
         }
     }
 }
