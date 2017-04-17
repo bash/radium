@@ -3,7 +3,7 @@ use std::convert::TryFrom;
 use byteorder::{WriteBytesExt, ReadBytesExt};
 use super::{ReadError, TryFromError, ReadFrom, WriteTo};
 
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ConnectionType {
     Command,
     Listen,
