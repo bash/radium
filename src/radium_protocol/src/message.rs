@@ -1,6 +1,6 @@
 use std::io;
 use byteorder::WriteBytesExt;
-use super::{MessageType, WriteTo};
+use super::{MessageType, ReadFrom, ReadError, WriteTo};
 use super::messages::{AddEntry, EntryExpired, RemoveEntry};
 
 pub enum Message {
@@ -21,12 +21,27 @@ impl Message {
             &Message::AddEntry(_) => MessageType::AddEntry,
             &Message::RemoveEntry(_) => MessageType::RemoveEntry,
             &Message::EntryExpired(_) => MessageType::EntryExpired,
-            _ => panic!("invalid Message")
+            _ => panic!("invalid message")
         }
     }
 
     pub fn is_command(&self) -> bool {
         self.message_type().is_command()
+    }
+}
+
+impl ReadFrom for Message {
+    fn read_from<R: io::Read>(source: &mut R) -> Result<Self, ReadError> {
+        let msg_type = MessageType::read_from(source)?;
+
+        match msg_type {
+            MessageType::Ping => Ok(Message::Ping),
+            MessageType::Pong => Ok(Message::Pong),
+            MessageType::AddEntry => Ok(Message::AddEntry(AddEntry::read_from(source)?)),
+            MessageType::RemoveEntry => Ok(Message::RemoveEntry(RemoveEntry::read_from(source)?)),
+            MessageType::EntryExpired => Ok(Message::EntryExpired(EntryExpired::read_from(source)?)),
+            _ => panic!("invalid message type")
+        }
     }
 }
 
@@ -40,7 +55,7 @@ impl WriteTo for Message {
             &Message::RemoveEntry(ref msg) => msg.write_to(target),
             &Message::AddEntry(ref msg) => msg.write_to(target),
             &Message::EntryExpired(ref msg) => msg.write_to(target),
-            _ => panic!("invalid Message")
+            _ => panic!("invalid message")
         }
     }
 }
