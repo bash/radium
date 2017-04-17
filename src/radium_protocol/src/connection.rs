@@ -20,7 +20,7 @@ pub enum ConnectionType {
     Listen,
     // Prevent exhaustive matching to allow for future extension
     #[doc(hidden)]
-    __NonExhaustive
+    __NonExhaustive,
 }
 
 #[derive(Debug)]
@@ -34,7 +34,7 @@ pub enum ConnectionTypeReadError {
     ReadError(io::Error),
     // Prevent exhaustive matching to allow for future extension
     #[doc(hidden)]
-    __NonExhaustive
+    __NonExhaustive,
 }
 
 impl ConnectionType {
@@ -42,7 +42,7 @@ impl ConnectionType {
         match self {
             &ConnectionType::Command => 0,
             &ConnectionType::Listen => 1,
-            _ => panic!("invalid connection type")
+            _ => panic!("invalid connection type"),
         }
     }
 
@@ -50,7 +50,8 @@ impl ConnectionType {
         target.write_u8(self.command_type())
     }
 
-    pub fn read_from<R: io::Read>(source: &mut R) -> Result<ConnectionType, ConnectionTypeReadError> {
+    pub fn read_from<R: io::Read>(source: &mut R)
+                                  -> Result<ConnectionType, ConnectionTypeReadError> {
         let value = source.read_u8()?;
 
         Ok(ConnectionType::try_from(value)?)
@@ -64,7 +65,7 @@ impl TryFrom<u8> for ConnectionType {
         match value {
             0 => Ok(ConnectionType::Command),
             1 => Ok(ConnectionType::Listen),
-            _ => Err(ConnectionTypeTryFromError::InvalidValue(value))
+            _ => Err(ConnectionTypeTryFromError::InvalidValue(value)),
         }
     }
 }
@@ -100,7 +101,7 @@ impl Error for ConnectionTypeReadError {
         match self {
             &ConnectionTypeReadError::InvalidValue(..) => "invalid connection type value",
             &ConnectionTypeReadError::ReadError(ref err) => err.description(),
-            _ => panic!("invalid error")
+            _ => panic!("invalid error"),
         }
     }
 
@@ -134,8 +135,12 @@ mod test {
 
     #[test]
     fn test_read() {
-        assert_eq!(ConnectionType::Command, ConnectionType::read_from(&mut [0u8].as_ref()).unwrap());
-        assert_eq!(ConnectionType::Listen, ConnectionType::read_from(&mut [1u8].as_ref()).unwrap());
+        assert_eq!(ConnectionType::Command,
+                   ConnectionType::read_from(&mut [0u8].as_ref()).unwrap());
+
+        assert_eq!(ConnectionType::Listen,
+                   ConnectionType::read_from(&mut [1u8].as_ref()).unwrap());
+
         assert!(ConnectionType::read_from(&mut [2u8].as_ref()).is_err());
     }
 }

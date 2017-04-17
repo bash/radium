@@ -6,7 +6,7 @@ use byteorder::{WriteBytesExt, BigEndian};
 pub enum Command {
     Ping,
     AddEntry(AddEntry),
-    RemoveEntry(RemoveEntry)
+    RemoveEntry(RemoveEntry),
 }
 
 /// ts: i64 | len: u16 | data: (len)
@@ -24,18 +24,18 @@ pub struct RemoveEntry {
 pub enum CommandResult {
     Pong,
     EntryAdded { id: u16 },
-    EntryRemoved
+    EntryRemoved,
 }
 
 #[derive(Debug)]
 enum WriteError {
-    DataLengthOverflow
+    DataLengthOverflow,
 }
 
 impl Error for WriteError {
     fn description(&self) -> &str {
         match self {
-            &WriteError::DataLengthOverflow => "Data overflows maximum length"
+            &WriteError::DataLengthOverflow => "Data overflows maximum length",
         }
     }
 }
@@ -51,7 +51,7 @@ impl Command {
         match self {
             &Command::Ping => 0,
             &Command::AddEntry(_) => 1,
-            &Command::RemoveEntry(_) => 2
+            &Command::RemoveEntry(_) => 2,
         }
     }
 
@@ -61,7 +61,7 @@ impl Command {
         match self {
             &Command::Ping => Ok(()),
             &Command::RemoveEntry(ref cmd) => cmd.write_to(target),
-            &Command::AddEntry(ref cmd) => cmd.write_to(target)
+            &Command::AddEntry(ref cmd) => cmd.write_to(target),
         }
     }
 }
@@ -75,7 +75,7 @@ impl AddEntry {
         let len = self.data.len();
 
         if len > u16::max_value() as usize {
-            return Err(io::Error::new(io::ErrorKind::Other, WriteError::DataLengthOverflow))
+            return Err(io::Error::new(io::ErrorKind::Other, WriteError::DataLengthOverflow));
         }
 
         target.write_i64::<BigEndian>(self.timestamp)?;
