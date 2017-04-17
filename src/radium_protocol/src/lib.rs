@@ -5,16 +5,16 @@ extern crate byteorder;
 #[macro_use]
 mod macros;
 
-mod command;
-mod command_type;
-mod commands;
+mod message;
+mod message_type;
+mod messages;
 mod connection_type;
 mod errors;
 mod io;
 
 pub use self::connection_type::*;
-pub use self::command_type::*;
-pub use self::command::*;
-pub use self::commands::*;
+pub use self::message_type::*;
+pub use self::message::*;
+pub use self::messages::*;
 pub use self::errors::*;
 pub use self::io::*;

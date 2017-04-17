@@ -24,11 +24,11 @@ impl RemoveEntry {
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::super::Command;
+    use super::super::super::Message;
 
     #[test]
     fn test_remove_entry() {
-        let cmd = Command::RemoveEntry(RemoveEntry::new(12345, 23));
+        let cmd = Message::RemoveEntry(RemoveEntry::new(12345, 23));
         let mut vec = Vec::<u8>::new();
 
         assert!(cmd.write_to(&mut vec).is_ok());

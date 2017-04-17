@@ -47,11 +47,11 @@ impl AddEntry {
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::super::Command;
+    use super::super::super::Message;
 
     #[test]
     fn test_add_entry() {
-        let cmd = Command::AddEntry(AddEntry::new(10, vec![1, 2, 3]));
+        let cmd = Message::AddEntry(AddEntry::new(10, vec![1, 2, 3]));
         let mut vec = Vec::<u8>::new();
 
         assert!(cmd.write_to(&mut vec).is_ok());
@@ -75,7 +75,7 @@ mod test {
             data.push(0);
         }
 
-        let cmd = Command::AddEntry(AddEntry::new(0, data));
+        let cmd = Message::AddEntry(AddEntry::new(0, data));
         let mut target = Vec::<u8>::new();
 
         let result = cmd.write_to(&mut target);
