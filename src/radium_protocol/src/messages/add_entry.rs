@@ -1,7 +1,7 @@
 use std::io;
 use std::io::Read;
 use std::error::Error;
-use byteorder::{ReadBytesExt, WriteBytesExt, BigEndian};
+use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
 use super::super::{ReadFrom, WriteTo, ReadError};
 
 #[derive(Debug)]
@@ -41,8 +41,8 @@ impl AddEntry {
 
 impl ReadFrom for AddEntry {
     fn read_from<R: io::Read>(source: &mut R) -> Result<Self, ReadError> {
-        let timestamp = source.read_i64::<BigEndian>()?;
-        let length = source.read_u16::<BigEndian>()? as u64;
+        let timestamp = source.read_i64::<NetworkEndian>()?;
+        let length = source.read_u16::<NetworkEndian>()? as u64;
 
         let mut buf = Vec::new();
         let bytes_read = source.take(length).read_to_end(&mut buf)?;
@@ -63,8 +63,8 @@ impl WriteTo for AddEntry {
             return Err(io::Error::new(io::ErrorKind::Other, AddEntryWriteError::DataLengthOverflow));
         }
 
-        target.write_i64::<BigEndian>(self.timestamp)?;
-        target.write_u16::<BigEndian>(len as u16)?;
+        target.write_i64::<NetworkEndian>(self.timestamp)?;
+        target.write_u16::<NetworkEndian>(len as u16)?;
 
         target.write(&self.data)?;
 

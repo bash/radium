@@ -1,5 +1,5 @@
 use std::io;
-use byteorder::{WriteBytesExt, BigEndian};
+use byteorder::{WriteBytesExt, NetworkEndian};
 
 /// ts: i64 | id: u16
 pub struct RemoveEntry {
@@ -13,8 +13,8 @@ impl RemoveEntry {
     }
 
     pub fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
-        target.write_i64::<BigEndian>(self.timestamp)?;
-        target.write_u16::<BigEndian>(self.id)?;
+        target.write_i64::<NetworkEndian>(self.timestamp)?;
+        target.write_u16::<NetworkEndian>(self.id)?;
 
         Ok(())
     }
