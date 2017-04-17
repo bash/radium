@@ -8,10 +8,10 @@ mod macros;
 mod command;
 mod command_type;
 mod commands;
-mod connection;
+mod connection_type;
 mod errors;
 
-pub use self::connection::*;
+pub use self::connection_type::*;
 pub use self::command_type::*;
 pub use self::command::*;
 pub use self::commands::*;
