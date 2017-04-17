@@ -11,6 +11,7 @@ pub enum MessageType {
     EntryAdded,
     RemoveEntry,
     EntryRemoved,
+    EntryExpired,
     #[doc(hidden)]
     __NonExhaustive,
 }
@@ -47,6 +48,7 @@ impl Into<u8> for MessageType {
             MessageType::EntryAdded => 3,
             MessageType::RemoveEntry => 4,
             MessageType::EntryRemoved => 5,
+            MessageType::EntryExpired => 6,
             _ => panic!("Invalid Message type"),
         }
     }
@@ -63,7 +65,8 @@ impl TryFrom<u8> for MessageType {
             3 => Ok(MessageType::EntryAdded),
             4 => Ok(MessageType::RemoveEntry),
             5 => Ok(MessageType::EntryRemoved),
-            _ => Err(TryFromError::InvalidValue)
+            6 => Ok(MessageType::EntryExpired),
+            _ => Err(TryFromError::InvalidValue),
         }
     }
 }
@@ -95,4 +98,5 @@ mod test {
     test_message_type!(test_entry_added, MessageType::EntryAdded, 3, false);
     test_message_type!(test_remove_entry, MessageType::RemoveEntry, 4, true);
     test_message_type!(test_entry_removed, MessageType::EntryRemoved, 5, false);
+    test_message_type!(test_entry_expired, MessageType::EntryExpired, 6, false);
 }
