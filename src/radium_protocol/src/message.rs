@@ -1,11 +1,13 @@
 use std::io;
 use byteorder::WriteBytesExt;
-use super::{MessageType, AddEntry, RemoveEntry, WriteTo};
+use super::{MessageType, WriteTo};
+use super::messages::{AddEntry, EntryExpired, Entry, RemoveEntry};
 
 pub enum Message {
     Ping,
     AddEntry(AddEntry),
     RemoveEntry(RemoveEntry),
+    EntryExpired(EntryExpired),
     #[doc(hidden)]
     __NonExhaustive,
 }
