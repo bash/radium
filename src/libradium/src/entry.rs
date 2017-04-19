@@ -119,4 +119,9 @@ impl<T: Send + 'static> Entry<T> {
     pub fn data(&self) -> &T {
         &self.data
     }
+
+    /// Returns the data, consuming the `Entry`
+    pub fn consume_data(self) -> T {
+        self.data
+    }
 }
