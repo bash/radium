@@ -12,12 +12,14 @@ pub enum MessageType {
     RemoveEntry,
     EntryRemoved,
     EntryExpired,
+    SetWatchMode,
+    WatchModeSet,
 }
 
 impl MessageType {
     pub fn is_command(self) -> bool {
         match self {
-            MessageType::Ping | MessageType::AddEntry | MessageType::RemoveEntry => true,
+            MessageType::Ping | MessageType::AddEntry | MessageType::RemoveEntry | MessageType::SetWatchMode => true,
             _ => false
         }
     }
@@ -51,6 +53,8 @@ impl Into<u8> for MessageType {
             MessageType::RemoveEntry => 4,
             MessageType::EntryRemoved => 5,
             MessageType::EntryExpired => 6,
+            MessageType::SetWatchMode => 7,
+            MessageType::WatchModeSet => 8,
         }
     }
 }
@@ -67,6 +71,8 @@ impl TryFrom<u8> for MessageType {
             4 => Ok(MessageType::RemoveEntry),
             5 => Ok(MessageType::EntryRemoved),
             6 => Ok(MessageType::EntryExpired),
+            7 => Ok(MessageType::SetWatchMode),
+            8 => Ok(MessageType::WatchModeSet),
             _ => Err(TryFromError::InvalidValue),
         }
     }
@@ -100,4 +106,6 @@ mod test {
     test_message_type!(test_remove_entry, MessageType::RemoveEntry, 4, true);
     test_message_type!(test_entry_removed, MessageType::EntryRemoved, 5, false);
     test_message_type!(test_entry_expired, MessageType::EntryExpired, 6, false);
+    test_message_type!(test_set_watch_mode, MessageType::SetWatchMode, 7, true);
+    test_message_type!(test_watch_mode_set, MessageType::WatchModeSet, 8, false);
 }

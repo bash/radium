@@ -13,6 +13,11 @@ pub enum ReadError {
     IoError(io::Error),
 }
 
+#[derive(Debug)]
+pub enum EntryWriteError {
+    DataLengthOverflow,
+}
+
 impl_err_display!(TryFromError);
 
 impl Error for TryFromError {
@@ -48,6 +53,16 @@ impl Error for ReadError {
         match self {
             &ReadError::IoError(ref err) => err.cause(),
             _ => None,
+        }
+    }
+}
+
+impl_err_display!(EntryWriteError);
+
+impl Error for EntryWriteError {
+    fn description(&self) -> &str {
+        match self {
+            &EntryWriteError::DataLengthOverflow => "Data overflows maximum length",
         }
     }
 }
