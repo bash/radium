@@ -16,32 +16,35 @@ const UInt8 = (value) => {
   return buf
 }
 
-const ConnectionMode = Object.freeze({ Action: 0, Listen: 1 })
+const WatchMode = Object.freeze({ None: 0, Watching: 1 })
 
 class Ping {
   write (socket) {
-    socket.write(UInt16(0))
+    socket.write(UInt8(0))
   }
 }
 
-class Close {
+class SetWatchMode {
+  constructor (mode) {
+    this._mode = mode
+  }
+
   write (socket) {
-    socket.write(UInt16(2))
+    socket.write(UInt8(7))
+    socket.write(UInt8(this._mode))
   }
 }
 
 class Radium {
-  constructor (mode, host = '127.0.0.1', port = 3126) {
+  constructor (host = '127.0.0.1', port = 3126) {
     this._client = new net.Socket()
     this._onConnected = new Promise((resolve, reject) => {
-      this._client.connect(port, host, () => {
-        // todo: error handling
-
-        this._client.write(UInt8(mode))
-
-        resolve()
-      })
+      this._client.connect(port, host, resolve)
     })
+  }
+
+  close () {
+    this._client.end()
   }
 
   onConnected () {
@@ -56,7 +59,7 @@ class Radium {
     return new Promise((resolve) => {
       // todo: parse response types and parse response
       this._client.once('data', (data) => {
-        resolve(data.readUInt16BE(0))
+        resolve(data.readUInt8(0))
       })
 
       this.send(action)
@@ -64,15 +67,26 @@ class Radium {
   }
 }
 
-const radium = new Radium(ConnectionMode.Action)
+const radium = new Radium()
+
+radium._client.on('data', (data) => {
+  console.info('received data chunk', data)
+})
 
 radium.onConnected()
   .then(() => {
-    console.log('connected')
-    return radium.action(new Ping())
+    return Promise.all([
+      radium.action(new Ping()),
+      radium.action(new Ping())
+    ])
   })
   .then((resp) => {
     console.log('Received', resp)
 
-    radium.send(new Close())
+    if (process.argv[2] === 'w') {
+      return radium.action(new SetWatchMode(WatchMode.Watching))
+    }
+  })
+  .then(() => {
+    // radium.close()
   })
