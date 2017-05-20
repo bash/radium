@@ -1,4 +1,5 @@
 use std::io;
+use std::net::Shutdown;
 use mio::{Evented, Poll, Token, Ready, PollOpt};
 use mio::tcp::TcpStream;
 use radium_protocol::WatchMode;
@@ -22,6 +23,10 @@ impl Connection {
 
     pub fn watch_mode(&self) -> WatchMode {
         self.watch_mode
+    }
+
+    pub fn close(&self) -> io::Result<()> {
+        self.sock.shutdown(Shutdown::Both)
     }
 }
 
