@@ -125,3 +125,12 @@ impl<T: Send + 'static> Entry<T> {
         self.data
     }
 }
+
+impl<T: Send + 'static> Clone for Entry<T> where T: Clone {
+    fn clone(&self) -> Self {
+        Entry {
+            id: self.id,
+            data: self.data.clone()
+        }
+    }
+}

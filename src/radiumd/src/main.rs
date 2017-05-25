@@ -7,18 +7,20 @@ extern crate radium_protocol;
 
 mod connection;
 mod server;
-mod tokens;
-mod worker;
 mod logger;
+mod pool;
+mod entry;
 
 use std::io::Write;
 use mio::tcp::TcpListener;
 use libradium::{Frontend, Entry, Listener, Timestamp};
 use logger::Logger;
+use pool::Pool;
 
 #[allow(deprecated)]
 use mio::channel::{channel, Sender};
-use server::{Server, EntryData};
+use self::server::Server;
+use self::entry::EntryData;
 
 macro_rules! sock_addr {
     ($a:expr, $b:expr, $c:expr, $d:expr, $port:expr) => {

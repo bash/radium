@@ -1,0 +1,1 @@
+pub type EntryData = Vec<u8>;

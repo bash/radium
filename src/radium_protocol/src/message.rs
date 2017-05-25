@@ -15,6 +15,7 @@ pub enum Message {
     EntryExpired(EntryExpired),
     SetWatchMode(SetWatchMode),
     WatchModeSet,
+    Close,
 }
 
 impl Message {
@@ -28,7 +29,8 @@ impl Message {
             &Message::EntryRemoved => MessageType::EntryRemoved,
             &Message::EntryExpired(..) => MessageType::EntryExpired,
             &Message::SetWatchMode(..) => MessageType::SetWatchMode,
-            &Message::WatchModeSet => MessageType::WatchModeSet
+            &Message::WatchModeSet => MessageType::WatchModeSet,
+            &Message::Close => MessageType::Close,
         }
     }
 
@@ -51,6 +53,7 @@ impl ReadFrom for Message {
             MessageType::EntryExpired => Ok(Message::EntryExpired(EntryExpired::read_from(source)?)),
             MessageType::SetWatchMode => Ok(Message::SetWatchMode(SetWatchMode::read_from(source)?)),
             MessageType::WatchModeSet => Ok(Message::WatchModeSet),
+            MessageType::Close => Ok(Message::Close),
         }
     }
 }
@@ -69,6 +72,7 @@ impl WriteTo for Message {
             &Message::EntryExpired(ref msg) => msg.write_to(target),
             &Message::SetWatchMode(ref msg) => msg.write_to(target),
             &Message::WatchModeSet => Ok(()),
+            &Message::Close => Ok(())
         }
     }
 }
@@ -125,4 +129,6 @@ mod test {
     test_message!(test_set_watch_mode,
                   Message::SetWatchMode(SetWatchMode::new(WatchMode::None)),
                   MessageType::SetWatchMode);
+
+    test_message!(test_close, Message::Close, MessageType::Close);
 }
