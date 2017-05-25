@@ -43,6 +43,7 @@ impl Worker {
 
     pub fn spawn() -> io::Result<Sender<WorkerMessage>> {
         let (sender, receiver) = channel::<WorkerMessage>();
+
         let poll = Poll::new()?;
         poll.register(&receiver, MESSAGE, Ready::readable(), PollOpt::edge())?;
 
