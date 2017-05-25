@@ -4,7 +4,7 @@ use std::thread;
 use mio::{Poll, Token, Ready, PollOpt, Events};
 use mio::unix::UnixReady;
 use slab::Slab;
-use radium_protocol::{Message, ReadValue};
+use radium_protocol::{Message, MessageType, ReadValue, WriteValue};
 use libradium::Entry;
 use std::io;
 use super::entry::EntryData;
@@ -27,9 +27,9 @@ pub struct Connections {
 }
 
 pub struct Pool {
-    next_pool: usize,
+    next_worker: usize,
     num_threads: usize,
-    threads: Vec<Sender<WorkerMessage>>,
+    workers: Vec<Sender<WorkerMessage>>,
 }
 
 impl Worker {
@@ -66,6 +66,8 @@ impl Worker {
                 let event = events.get(i).unwrap();
                 let token = event.token();
 
+                debug!("Handling token {:?}", token);
+
                 match token {
                     MESSAGE => {
                         let msg = self.receiver.try_recv().unwrap();
@@ -84,26 +86,40 @@ impl Worker {
                     },
                     _ if self.connections.has_conn(token) => {
                         let ready = event.readiness();
-                        let conn = self.connections.get_conn(token).unwrap();
 
                         if UnixReady::from(ready).is_hup() {
-                            self.poll.deregister(conn);
-                            return;
-                            // TODO: disconnect
+                            self.disconnect(token);
+                            continue;
                         }
 
                         if !ready.is_readable() {
                             continue;
                         }
 
-
+                        let conn = self.connections.get_conn(token).unwrap();
                         let msg = conn.read_value::<Message>().unwrap();
+
+                        match msg.message_type() {
+                            MessageType::Ping => conn.write_value(&Message::Pong),
+                            MessageType::SetWatchMode => conn.write_value(&MessageType::WatchModeSet),
+                            _ => Ok(())
+                        };
+
+                        // TODO: close connection if read fails
 
                         debug!("Received {:?}", msg.message_type());
                     },
                     _ => unreachable!()
                 }
             }
+        }
+    }
+
+    fn disconnect(&mut self, token: Token) {
+        let conn = self.connections.remove_conn(token);
+
+        if let Some(conn) = conn {
+            self.poll.deregister(&conn);
         }
     }
 }
@@ -123,6 +139,10 @@ impl Connections {
         self.inner.get_mut(token)
     }
 
+    pub fn remove_conn(&mut self, token: Token) -> Option<Connection> {
+        self.inner.remove(token)
+    }
+
     pub fn add_conn(&mut self, conn: Connection) -> (&Connection, Token) {
         // TODO: delegate .unwrap() to caller
         let token = {
@@ -139,34 +159,35 @@ impl Connections {
 impl Pool {
     pub fn new(num_threads: usize) -> Pool {
         // TODO: don't unwrap here
-        let threads = (0..num_threads)
+        let workers = (0..num_threads)
             .map(|_| Worker::spawn().unwrap())
             .collect();
 
-        Pool { threads, num_threads, next_pool: 0 }
+        Pool { workers, num_threads, next_worker: 0 }
     }
 
     pub fn register(&mut self, conn: Connection) {
         {
-            let sender = self.threads.get(self.next_pool).unwrap();
+            debug!("New connection for worker {}", self.next_worker);
+            let sender = self.workers.get(self.next_worker).unwrap();
             sender.send(WorkerMessage::Connection(conn));
         }
 
-        self.next_pool();
+        self.next_worker();
     }
 
     pub fn push_expired(&self, entry: Entry<EntryData>) {
-        for thread in &self.threads {
+        for thread in &self.workers {
             // TODO: we probably shouldn't clone the entry for every thread
             thread.send(WorkerMessage::Push(entry.clone()));
         }
     }
 
-    fn next_pool(&mut self) {
-        self.next_pool += 1;
+    fn next_worker(&mut self) {
+        self.next_worker += 1;
 
-        if self.next_pool == self.num_threads {
-            self.next_pool = 0;
+        if self.next_worker == self.num_threads {
+            self.next_worker = 0;
         }
     }
 }

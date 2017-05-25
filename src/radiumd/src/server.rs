@@ -29,7 +29,7 @@ pub struct Server {
 impl Server {
     pub fn new(tcp: TcpListener, receiver: Receiver<Entry<EntryData>>, frontend: Frontend<EntryData>) -> io::Result<Self> {
         let poll = Poll::new()?;
-        let pool = Pool::new(4);
+        let pool = Pool::new(1);
 
         poll.register(&tcp, SERVER, Ready::readable(), PollOpt::edge())?;
         poll.register(&receiver, RECEIVER, Ready::readable(), PollOpt::edge())?;

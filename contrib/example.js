@@ -1,4 +1,5 @@
 const net = require('net')
+const enableWatchMode = (process.argv[2] === 'w')
 
 const UInt16 = (value) => {
   const buf = Buffer.alloc(2)
@@ -83,10 +84,12 @@ radium.onConnected()
   .then((resp) => {
     console.log('Received', resp)
 
-    if (process.argv[2] === 'w') {
+    if (enableWatchMode) {
       return radium.action(new SetWatchMode(WatchMode.Watching))
     }
   })
   .then(() => {
-    // radium.close()
+    if (!enableWatchMode) {
+      radium.close()
+    }
   })
