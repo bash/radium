@@ -51,11 +51,11 @@ fn main() {
     Logger::init().unwrap();
 
     frontend
-        .add_entry(Entry::gen(Timestamp::now() + 5, vec![1, 2, 3]))
+        .add_entry(Entry::gen(Timestamp::now() + 10, vec![1, 2, 3]))
         .unwrap();
 
     frontend
-        .add_entry(Entry::gen(Timestamp::now() + 6, vec![20, 30, 40, 7]))
+        .add_entry(Entry::gen(Timestamp::now() + 13, vec![20, 30, 40, 7]))
         .unwrap();
 
     let pool = Pool::build(frontend, 4);

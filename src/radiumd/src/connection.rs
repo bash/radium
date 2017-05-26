@@ -2,7 +2,7 @@ use std::io;
 use std::net::Shutdown;
 use mio::{Evented, Poll, Token, Ready, PollOpt};
 use mio::tcp::TcpStream;
-use slab::Slab;
+use slab::{Slab, IterMut};
 use radium_protocol::WatchMode;
 pub use self::AddConnResult::{Added, Rejected};
 
@@ -78,6 +78,10 @@ impl Connections {
         Connections {
             inner: Slab::with_capacity(capacity)
         }
+    }
+
+    pub fn iter_mut(&mut self) -> IterMut<Connection, Token> {
+        self.inner.iter_mut()
     }
 
     pub fn get_conn_mut(&mut self, token: Token) -> Option<&mut Connection> {

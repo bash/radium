@@ -3,7 +3,8 @@ use std::io;
 use libradium::Frontend;
 use mio_channel::Receiver;
 use mio::{Poll, Token, Ready, PollOpt, Events, Event};
-use radium_protocol::{Message, ReadValue, WriteValue};
+use radium_protocol::{Message, ReadValue, WriteValue, WatchMode};
+use radium_protocol::messages::EntryExpired;
 
 use super::actions::Action;
 use super::connection::{Connection, Connections, Added, Rejected};
@@ -65,7 +66,7 @@ impl Worker {
         if token == MESSAGE_TOKEN {
             let msg = self.receiver.try_recv().unwrap();
 
-            match msg {
+            return match msg {
                 WorkerMessage::Connection(conn) => self.accept(conn),
                 WorkerMessage::Push(entry) => self.push(entry)
             }
@@ -85,6 +86,8 @@ impl Worker {
             // TODO: close connection if read or write fails
 
             debug!("worker {}, conn {} | {:?} -> {:?}", self.id, token.0, msg, resp);
+
+            return;
         }
 
         // TODO: is there anything else we need to do here?
@@ -103,10 +106,19 @@ impl Worker {
         result.unwrap();
     }
 
-    fn push(&self, entry: Entry) {
-        debug!("worker {} | push entry {:?}", self.id, entry.id());
+    fn push(&mut self, entry: Entry) {
+        let id = entry.id();
+        let inner = EntryExpired::new(id.timestamp(), id.id(), entry.consume_data());
+        let msg = Message::EntryExpired(inner);
 
-        // TODO: push to clients that have watch mode enabled
+        for conn in self.connections.iter_mut() {
+            if conn.watch_mode() == WatchMode::None {
+                continue;
+            }
+
+            // TODO: error handling
+            let _ = conn.write_value(&msg);
+        }
     }
 
     fn disconnect(&mut self, token: Token) -> io::Result<()> {
