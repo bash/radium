@@ -6,6 +6,7 @@ use super::storage::Storage;
 use super::entry::{Entry, EntryId};
 use super::worker::{Command, Listener, spawn_worker};
 
+// TODO: convert to own error type
 pub type CommandResult<T> = Result<(), SendError<Command<T>>>;
 
 pub struct Frontend<T: Send + 'static> {
