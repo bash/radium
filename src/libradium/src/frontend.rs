@@ -12,6 +12,14 @@ pub struct Frontend<T: Send + 'static> {
     tx: Sender<Command<T>>,
 }
 
+impl<T: Send + 'static> Clone for Frontend<T> {
+    fn clone(&self) -> Self {
+        Frontend {
+            tx: self.tx.clone()
+        }
+    }
+}
+
 impl<T: Send + 'static> Frontend<T> {
     pub fn new(tx: Sender<Command<T>>) -> Self {
         Frontend { tx }

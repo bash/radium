@@ -4,6 +4,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
 use super::super::{ReadFrom, WriteTo, ReadError, EntryWriteError};
 
 /// ts: i64 | id: u16 | len: u16 | data: (len < 2**16)
+#[derive(Debug)]
 pub struct EntryExpired {
     timestamp: i64,
     id: u16,

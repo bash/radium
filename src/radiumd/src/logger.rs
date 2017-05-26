@@ -13,9 +13,9 @@ impl Logger {
 }
 
 impl Log for Logger {
-    fn enabled(&self, metadata: &LogMetadata) -> bool { true }
+    fn enabled(&self, _: &LogMetadata) -> bool { true }
 
     fn log(&self, record: &LogRecord) {
-        writeln!(&mut stderr(), "{} | {}", record.level(), record.args());
+        let _ = writeln!(&mut stderr(), "{} | {}", record.level(), record.args());
     }
 }

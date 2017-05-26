@@ -13,8 +13,8 @@ pub enum MessageType {
     EntryRemoved,
     EntryExpired,
     SetWatchMode,
-    WatchModeSet,
-    Close,
+    Ok,
+    Error,
 }
 
 impl MessageType {
@@ -23,8 +23,7 @@ impl MessageType {
             MessageType::Ping |
             MessageType::AddEntry |
             MessageType::RemoveEntry |
-            MessageType::SetWatchMode |
-            MessageType::Close => true,
+            MessageType::SetWatchMode => true,
             _ => false
         }
     }
@@ -59,8 +58,8 @@ impl Into<u8> for MessageType {
             MessageType::EntryRemoved => 5,
             MessageType::EntryExpired => 6,
             MessageType::SetWatchMode => 7,
-            MessageType::WatchModeSet => 8,
-            MessageType::Close => 9,
+            MessageType::Ok => 8,
+            MessageType::Error => 9,
         }
     }
 }
@@ -78,8 +77,8 @@ impl TryFrom<u8> for MessageType {
             5 => Ok(MessageType::EntryRemoved),
             6 => Ok(MessageType::EntryExpired),
             7 => Ok(MessageType::SetWatchMode),
-            8 => Ok(MessageType::WatchModeSet),
-            9 => Ok(MessageType::Close),
+            8 => Ok(MessageType::Ok),
+            9 => Ok(MessageType::Error),
             _ => Err(TryFromError::InvalidValue),
         }
     }
@@ -114,6 +113,6 @@ mod test {
     test_message_type!(test_entry_removed, MessageType::EntryRemoved, 5, false);
     test_message_type!(test_entry_expired, MessageType::EntryExpired, 6, false);
     test_message_type!(test_set_watch_mode, MessageType::SetWatchMode, 7, true);
-    test_message_type!(test_watch_mode_set, MessageType::WatchModeSet, 8, false);
-    test_message_type!(test_close, MessageType::Close, 9, true);
+    test_message_type!(test_ok, MessageType::Ok, 8, false);
+    test_message_type!(test_error, MessageType::Error, 9, false);
 }

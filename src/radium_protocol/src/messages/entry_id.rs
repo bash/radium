@@ -6,6 +6,7 @@ pub type EntryAdded = EntryId;
 pub type RemoveEntry = EntryId;
 
 /// ts: i64 | id: u16
+#[derive(Debug)]
 pub struct EntryId {
     timestamp: i64,
     id: u16,

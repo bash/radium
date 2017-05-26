@@ -1,6 +1,7 @@
 [workspace]
 members = [
     "src/libradium",
+    "src/mio_channel",
     "src/radium_protocol",
     "src/radium",
     "src/radiumd"

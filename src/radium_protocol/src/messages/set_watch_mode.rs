@@ -3,6 +3,7 @@ use std::convert::TryFrom;
 use byteorder::{ReadBytesExt, WriteBytesExt};
 use super::super::{ReadFrom, WriteTo, ReadError, WatchMode};
 
+#[derive(Debug)]
 pub struct SetWatchMode {
     mode: WatchMode,
 }

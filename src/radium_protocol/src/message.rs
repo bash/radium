@@ -3,6 +3,7 @@ use byteorder::WriteBytesExt;
 use super::{MessageType, ReadFrom, ReadError, WriteTo};
 use super::messages::{AddEntry, EntryAdded, EntryExpired, RemoveEntry, SetWatchMode};
 
+#[derive(Debug)]
 pub enum Message {
     Ping,
     Pong,
@@ -14,8 +15,9 @@ pub enum Message {
     EntryRemoved,
     EntryExpired(EntryExpired),
     SetWatchMode(SetWatchMode),
-    WatchModeSet,
-    Close,
+    Ok,
+    // TODO: Error message must contain an error value
+    Error,
 }
 
 impl Message {
@@ -29,8 +31,8 @@ impl Message {
             &Message::EntryRemoved => MessageType::EntryRemoved,
             &Message::EntryExpired(..) => MessageType::EntryExpired,
             &Message::SetWatchMode(..) => MessageType::SetWatchMode,
-            &Message::WatchModeSet => MessageType::WatchModeSet,
-            &Message::Close => MessageType::Close,
+            &Message::Ok => MessageType::Ok,
+            &Message::Error => MessageType::Error,
         }
     }
 
@@ -52,8 +54,8 @@ impl ReadFrom for Message {
             MessageType::EntryRemoved => Ok(Message::EntryRemoved),
             MessageType::EntryExpired => Ok(Message::EntryExpired(EntryExpired::read_from(source)?)),
             MessageType::SetWatchMode => Ok(Message::SetWatchMode(SetWatchMode::read_from(source)?)),
-            MessageType::WatchModeSet => Ok(Message::WatchModeSet),
-            MessageType::Close => Ok(Message::Close),
+            MessageType::Ok => Ok(Message::Ok),
+            MessageType::Error => Ok(Message::Error),
         }
     }
 }
@@ -71,8 +73,8 @@ impl WriteTo for Message {
             &Message::EntryRemoved => Ok(()),
             &Message::EntryExpired(ref msg) => msg.write_to(target),
             &Message::SetWatchMode(ref msg) => msg.write_to(target),
-            &Message::WatchModeSet => Ok(()),
-            &Message::Close => Ok(())
+            &Message::Ok => Ok(()),
+            &Message::Error => Ok(())
         }
     }
 }
@@ -124,11 +126,11 @@ mod test {
                   Message::EntryExpired(EntryExpired::new(0, 7, vec![])),
                   MessageType::EntryExpired);
 
-    test_message!(test_watch_mode_set, WatchModeSet);
+    test_message!(test_ok, Ok);
 
     test_message!(test_set_watch_mode,
                   Message::SetWatchMode(SetWatchMode::new(WatchMode::None)),
                   MessageType::SetWatchMode);
 
-    test_message!(test_close, Message::Close, MessageType::Close);
+    test_message!(test_error, Message::Error, MessageType::Error);
 }

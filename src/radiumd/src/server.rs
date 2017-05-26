@@ -1,18 +1,11 @@
 use super::connection::Connection;
 use std::io;
-use mio::{Token, Events, Event, Poll, PollOpt, Ready};
-use mio::unix::UnixReady;
+use mio::{Token, Events, Poll, PollOpt, Ready};
 use mio::tcp::TcpListener;
+use mio_channel::Receiver;
 
-#[allow(deprecated)]
-use mio::channel::Receiver;
-
-use slab::Slab;
-use radium_protocol::{Message, ReadValue, WriteValue, WatchMode};
-use radium_protocol::messages::EntryExpired;
-use libradium::{Entry, Frontend};
 use super::pool::Pool;
-use super::entry::EntryData;
+use super::entry::Entry;
 
 pub const RECEIVER: Token = Token(10_000_001);
 pub const SERVER: Token = Token(10_000_000);
@@ -21,15 +14,13 @@ pub struct Server {
     events: Events,
     poll: Poll,
     tcp: TcpListener,
-    receiver: Receiver<Entry<EntryData>>,
-    frontend: Frontend<EntryData>,
+    receiver: Receiver<Entry>,
     pool: Pool,
 }
 
 impl Server {
-    pub fn new(tcp: TcpListener, receiver: Receiver<Entry<EntryData>>, frontend: Frontend<EntryData>) -> io::Result<Self> {
+    pub fn new(tcp: TcpListener, receiver: Receiver<Entry>, pool: Pool) -> io::Result<Self> {
         let poll = Poll::new()?;
-        let pool = Pool::new(1);
 
         poll.register(&tcp, SERVER, Ready::readable(), PollOpt::edge())?;
         poll.register(&receiver, RECEIVER, Ready::readable(), PollOpt::edge())?;
@@ -39,12 +30,17 @@ impl Server {
             poll: poll,
             tcp,
             receiver,
-            frontend,
             pool,
         })
     }
 
-    pub fn poll(&mut self) -> io::Result<()> {
+    pub fn run(&mut self) -> io::Result<()> {
+        loop {
+            self.poll()?;
+        }
+    }
+
+    fn poll(&mut self) -> io::Result<()> {
         self.poll.poll(&mut self.events, None)?;
 
         for i in 0..self.events.len() {
@@ -56,11 +52,12 @@ impl Server {
     }
 
     fn handle_event(&mut self, token: Token) {
+        // TODO: proper error handling
         match token {
             SERVER => self.accept(),
             RECEIVER => self.pool.push_expired(
                 self.receiver.try_recv().unwrap()
-            ),
+            ).unwrap(),
             _ => {
                 // TODO
             }
@@ -79,6 +76,7 @@ impl Server {
             }
         };
 
-        self.pool.register(Connection::new(stream));
+        // TODO: proper error handling
+        self.pool.register(Connection::new(stream)).unwrap();
     }
 }

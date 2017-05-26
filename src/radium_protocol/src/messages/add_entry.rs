@@ -4,6 +4,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
 use super::super::{ReadFrom, WriteTo, ReadError, EntryWriteError};
 
 /// ts: i64 | len: u16 | data: (len < 2**16)
+#[derive(Debug)]
 pub struct AddEntry {
     timestamp: i64,
     data: Vec<u8>,

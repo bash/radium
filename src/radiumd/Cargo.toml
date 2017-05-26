@@ -6,6 +6,7 @@ authors = ["Ruben Schmidmeister <ruben.schmidmeister@icloud.com>"]
 [dependencies]
 libradium = { path = "../libradium" }
 radium_protocol = { path = "../radium_protocol" }
+mio_channel = { path = "../mio_channel" }
 mio = "0.6"
 slab = "0.3.0"
 log = "0.3"
