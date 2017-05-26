@@ -1,7 +1,21 @@
+use std::env;
 use std::io;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
 use super::super::{ReadFrom, WriteTo, ReadError, EntryWriteError};
+
+/// default value for maximum bytes of data (2KiB)
+const MAX_DATA_BYTES: u64 = 2048;
+
+fn get_max_data_bytes() -> u64 {
+    match env::var("RADIUM_MAX_DATA_BYTES") {
+        Ok(val) => match val.parse::<u64>() {
+            Ok(val) => val,
+            Err(..) => MAX_DATA_BYTES
+        },
+        Err(..) => MAX_DATA_BYTES
+    }
+}
 
 /// ts: i64 | len: u16 | data: (len < 2**16)
 #[derive(Debug)]
@@ -25,12 +39,20 @@ impl AddEntry {
     pub fn data(&self) -> &[u8] {
         &self.data
     }
+
+    pub fn consume_data(self) -> Vec<u8> {
+        self.data
+    }
 }
 
 impl ReadFrom for AddEntry {
     fn read_from<R: io::Read>(source: &mut R) -> Result<Self, ReadError> {
         let timestamp = source.read_i64::<NetworkEndian>()?;
         let length = source.read_u16::<NetworkEndian>()? as u64;
+
+        if length > get_max_data_bytes() {
+            return Err(ReadError::LimitReached);
+        }
 
         let mut buf = Vec::new();
         let bytes_read = source.take(length).read_to_end(&mut buf)?;

@@ -10,6 +10,7 @@ pub enum TryFromError {
 pub enum ReadError {
     InvalidValue,
     UnexpectedEof,
+    LimitReached,
     IoError(io::Error),
 }
 
@@ -45,6 +46,7 @@ impl Error for ReadError {
         match self {
             &ReadError::InvalidValue => "invalid value",
             &ReadError::UnexpectedEof => "unexpected eof",
+            &ReadError::LimitReached => "limit reached",
             &ReadError::IoError(ref err) => err.description(),
         }
     }
