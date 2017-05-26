@@ -74,18 +74,19 @@ impl Worker {
 
         if let Some(conn) = self.connections.get_conn_mut(token) {
             let msg: Message = conn.read_value::<Message>().unwrap();
+            let msg_type = msg.message_type();
 
-            let resp = match msg.process(conn) {
+            let resp: Message = match msg.process(conn, &mut self.frontend) {
                 Ok(resp) => resp,
                 Err(..) => Message::Error
             };
+
+            debug!("worker {}, conn {} | {:?} -> {:?}", self.id, token.0, msg_type, resp.message_type());
 
             // TODO: don't unwrap
             conn.write_value(&resp).unwrap();
 
             // TODO: close connection if read or write fails
-
-            debug!("worker {}, conn {} | {:?} -> {:?}", self.id, token.0, msg, resp);
 
             return;
         }
