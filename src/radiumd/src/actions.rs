@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt;
 use libradium::{Frontend, Entry, EntryId};
 use radium_protocol::Message;
-use radium_protocol::messages::{SetWatchMode, AddEntry, EntryAdded};
+use radium_protocol::messages::{SetWatchMode, AddEntry, EntryAdded, ErrorCode, ErrorMessage};
 use super::connection::Connection;
 use super::entry::EntryData;
 
@@ -10,6 +10,21 @@ use super::entry::EntryData;
 pub enum ActionError {
     NotACommand,
     Unimplemented
+}
+
+impl Into<ErrorCode> for ActionError {
+    fn into(self) -> ErrorCode {
+        match self {
+            ActionError::NotACommand => ErrorCode::InvalidAction,
+            ActionError::Unimplemented => ErrorCode::ActionNotImplemented,
+        }
+    }
+}
+
+impl Into<Message> for ActionError {
+    fn into(self) -> Message {
+        Message::Error(ErrorMessage::new(self.into()))
+    }
 }
 
 pub trait Action {

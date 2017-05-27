@@ -1,3 +1,14 @@
+use byteorder::{ReadBytesExt, WriteBytesExt};
+use std::convert::TryFrom;
+use std::io;
+use super::super::errors::TryFromError;
+use super::super::{ReadFrom, WriteTo, ReadError};
+
+#[derive(Debug)]
+pub struct ErrorMessage {
+    code: ErrorCode
+}
+
 #[derive(Copy, Clone, Debug)]
 pub enum ErrorCode {
     /// The client was rejected because
@@ -10,11 +21,49 @@ pub enum ErrorCode {
 }
 
 impl Into<u8> for ErrorCode {
-    fn into(self) -> T {
+    fn into(self) -> u8 {
         match self {
             ErrorCode::ClientRejected => 0,
             ErrorCode::ActionNotImplemented => 1,
             ErrorCode::InvalidAction => 2
         }
+    }
+}
+
+impl TryFrom<u8> for ErrorCode {
+    type Error = TryFromError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(ErrorCode::ClientRejected),
+            1 => Ok(ErrorCode::ActionNotImplemented),
+            2 => Ok(ErrorCode::InvalidAction),
+            _ => Err(TryFromError::InvalidValue),
+        }
+    }
+}
+
+impl ErrorMessage {
+    pub fn new(code: ErrorCode) -> Self {
+        ErrorMessage { code }
+    }
+
+    pub fn code(&self) -> ErrorCode {
+        self.code
+    }
+}
+
+impl ReadFrom for ErrorMessage {
+    fn read_from<R: io::Read>(source: &mut R) -> Result<Self, ReadError> {
+        let raw_code = source.read_u8()?;
+        let code = ErrorCode::try_from(raw_code)?;
+
+        Ok(ErrorMessage::new(code))
+    }
+}
+
+impl WriteTo for ErrorMessage {
+    fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
+        target.write_u8(self.code.into())
     }
 }

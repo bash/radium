@@ -1,7 +1,7 @@
 use std::io;
 use byteorder::WriteBytesExt;
 use super::{MessageType, ReadFrom, ReadError, WriteTo};
-use super::messages::{AddEntry, EntryAdded, EntryExpired, RemoveEntry, SetWatchMode};
+use super::messages::{AddEntry, EntryAdded, EntryExpired, RemoveEntry, SetWatchMode, ErrorMessage};
 
 #[derive(Debug)]
 pub enum Message {
@@ -17,7 +17,7 @@ pub enum Message {
     SetWatchMode(SetWatchMode),
     Ok,
     // TODO: Error message must contain an error value
-    Error,
+    Error(ErrorMessage),
 }
 
 impl Message {
@@ -32,7 +32,7 @@ impl Message {
             &Message::EntryExpired(..) => MessageType::EntryExpired,
             &Message::SetWatchMode(..) => MessageType::SetWatchMode,
             &Message::Ok => MessageType::Ok,
-            &Message::Error => MessageType::Error,
+            &Message::Error(..) => MessageType::Error,
         }
     }
 
@@ -55,7 +55,7 @@ impl ReadFrom for Message {
             MessageType::EntryExpired => Ok(Message::EntryExpired(EntryExpired::read_from(source)?)),
             MessageType::SetWatchMode => Ok(Message::SetWatchMode(SetWatchMode::read_from(source)?)),
             MessageType::Ok => Ok(Message::Ok),
-            MessageType::Error => Ok(Message::Error),
+            MessageType::Error => Ok(Message::Error(ErrorMessage::read_from(source)?)),
         }
     }
 }
@@ -74,7 +74,7 @@ impl WriteTo for Message {
             &Message::EntryExpired(ref msg) => msg.write_to(target),
             &Message::SetWatchMode(ref msg) => msg.write_to(target),
             &Message::Ok => Ok(()),
-            &Message::Error => Ok(())
+            &Message::Error(ref msg) => msg.write_to(target),
         }
     }
 }

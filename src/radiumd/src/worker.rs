@@ -78,7 +78,7 @@ impl Worker {
 
             let resp: Message = match msg.process(conn, &mut self.frontend) {
                 Ok(resp) => resp,
-                Err(..) => Message::Error
+                Err(err) => err.into()
             };
 
             debug!("worker {}, conn {} | {:?} -> {:?}", self.id, token.0, msg_type, resp.message_type());
