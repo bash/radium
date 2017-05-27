@@ -83,6 +83,7 @@ impl WriteTo for Message {
 mod test {
     use super::*;
     use super::super::WatchMode;
+    use super::super::messages::ErrorCode;
 
     macro_rules! test_message {
         ($test:ident, $ty:ident) => {
@@ -132,5 +133,5 @@ mod test {
                   Message::SetWatchMode(SetWatchMode::new(WatchMode::None)),
                   MessageType::SetWatchMode);
 
-    test_message!(test_error, Message::Error, MessageType::Error);
+    test_message!(test_error, Message::Error(ErrorMessage::new(ErrorCode::ClientRejected)), MessageType::Error);
 }
