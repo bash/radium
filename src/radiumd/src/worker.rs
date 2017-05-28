@@ -6,7 +6,7 @@ use libradium::Frontend;
 use mio_channel::Receiver;
 use mio::{Poll, Token, Ready, PollOpt, Events, Event};
 use mio::unix::UnixReady;
-use radium_protocol::{Message, ReadValueExt, WriteValueExt, WatchMode, ErrorCode};
+use radium_protocol::{Message, ReadValueExt, WriteValueExt, ErrorCode};
 use radium_protocol::errors::{ReadError, WriteError};
 use radium_protocol::messages::{EntryExpired, ErrorMessage};
 
@@ -114,6 +114,7 @@ impl Worker {
         let unix_ready = UnixReady::from(ready);
 
         if unix_ready.is_hup() || unix_ready.is_error() {
+            println!("Disconnecting because ready {:?}", unix_ready);
             self.disconnect(token, None).unwrap();
             return;
         }
@@ -127,7 +128,8 @@ impl Worker {
             }
         }
 
-        if let Err(..) = self.handle_msg(token) {
+        if let Err(err) = self.handle_msg(token) {
+            println!("Disconnecting because handle {:?}", err);
             self.disconnect(token, Some(ErrorCode::ConnectionFailure)).unwrap();
         }
     }
@@ -165,15 +167,15 @@ impl Worker {
 
     fn push(&mut self, entry: Entry) {
         let id = entry.id();
-        let inner = EntryExpired::new(id.timestamp(), id.id(), entry.consume_data());
+        let tag = entry.data().tag();
+        let inner = EntryExpired::new(id.timestamp(), id.id(), tag, entry.consume_data().consume_data());
         let msg = Message::EntryExpired(inner);
 
-        for conn in self.connections.iter_mut() {
-            if conn.watch_mode() == WatchMode::None {
-                continue;
-            }
+        let conns = self.connections
+            .iter_mut()
+            .filter(|conn| conn.watch_mode().matches_tag(tag));
 
-            // TODO: error handling
+        for conn in conns {
             let _ = conn.write_value(&msg);
         }
     }

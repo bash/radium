@@ -15,6 +15,16 @@ pub enum WatchMode {
     Tagged(u64)
 }
 
+impl WatchMode {
+    pub fn matches_tag(&self, tag: u64) -> bool {
+        match self {
+            &WatchMode::None => false,
+            &WatchMode::All => true,
+            &WatchMode::Tagged(val) => val == tag,
+        }
+    }
+}
+
 impl ReadFrom for WatchMode {
     fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
         let mode = source.read_u8()?;

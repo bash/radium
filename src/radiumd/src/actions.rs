@@ -68,7 +68,7 @@ impl Action for SetWatchMode {
 impl Action for AddEntry {
     fn process(self, _: &mut Connection, frontend: &mut Frontend<EntryData>) -> ActionResult {
         let id = EntryId::gen(self.timestamp());
-        let entry = Entry::new(id, self.consume_data());
+        let entry = Entry::new(id, EntryData::new(self.tag(), self.consume_data()));
 
         frontend.add_entry(entry)?;
 
