@@ -16,7 +16,6 @@ pub enum Message {
     EntryExpired(EntryExpired),
     SetWatchMode(SetWatchMode),
     Ok,
-    // TODO: Error message must contain an error value
     Error(ErrorMessage),
 }
 
