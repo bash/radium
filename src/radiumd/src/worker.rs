@@ -3,18 +3,25 @@ use std::io;
 use libradium::Frontend;
 use mio_channel::Receiver;
 use mio::{Poll, Token, Ready, PollOpt, Events, Event};
-use radium_protocol::{Message, ReadValue, WriteValue, WatchMode};
-use radium_protocol::messages::EntryExpired;
+use mio::unix::UnixReady;
+use radium_protocol::{Message, ReadValue, WriteValue, WatchMode, ReadError};
+use radium_protocol::messages::{EntryExpired, ErrorMessage, ErrorCode};
 
 use super::actions::Action;
 use super::connection::{Connection, Connections, Added, Rejected};
 use super::entry::{Entry, EntryData};
 
 pub const MESSAGE_TOKEN: Token = Token(10_000_000);
+pub const DEFAULT_WORKER_CONNECTIONS: usize = 128;
 
 pub enum WorkerMessage {
     Connection(Connection),
     Push(Entry)
+}
+
+pub enum WorkerError {
+    ReadError(ReadError),
+    IoError(io::Error)
 }
 
 pub struct Worker {
@@ -22,16 +29,26 @@ pub struct Worker {
     connections: Connections,
     poll: Poll,
     receiver: Receiver<WorkerMessage>,
-    // TODO: remove #[allow(dead_code)]
-    #[allow(dead_code)]
     frontend: Frontend<EntryData>,
+}
+
+impl From<io::Error> for WorkerError {
+    fn from(err: io::Error) -> Self {
+        WorkerError::IoError(err)
+    }
+}
+
+impl From<ReadError> for WorkerError {
+    fn from(err: ReadError) -> Self {
+        WorkerError::ReadError(err)
+    }
 }
 
 impl Worker {
     pub fn new(id: usize, poll: Poll, receiver: Receiver<WorkerMessage>, frontend: Frontend<EntryData>) -> Self {
         Worker {
             id,
-            connections: Connections::with_capacity(128),
+            connections: Connections::with_capacity(env_var!("RADIUM_WORKER_CONNECTIONS", DEFAULT_WORKER_CONNECTIONS)),
             poll,
             receiver,
             frontend,
@@ -55,11 +72,10 @@ impl Worker {
     fn handle_event(&mut self, event: Event) {
         let token = event.token();
         let ready = event.readiness();
+        let unix_ready = UnixReady::from(ready);
 
-        // TODO: make sure this doesn't cause unintended side effects, otherwise switch to UnixReady.hup()
-        if !ready.is_readable() {
-            // TODO: don't unwrap
-            self.disconnect(token).unwrap();
+        if unix_ready.is_hup() || unix_ready.is_error() {
+            self.disconnect(token, None).unwrap();
             return;
         }
 
@@ -72,8 +88,15 @@ impl Worker {
             }
         }
 
+        if let Err(..) = self.handle_msg(token) {
+            self.disconnect(token, Some(ErrorCode::ConnectionFailure)).unwrap();
+        }
+    }
+
+    fn handle_msg(&mut self, token: Token) -> Result<(), WorkerError> {
         if let Some(conn) = self.connections.get_conn_mut(token) {
-            let msg: Message = conn.read_value::<Message>().unwrap();
+            let msg: Message = conn.read_value::<Message>()?;
+
             let msg_type = msg.message_type();
 
             let resp: Message = match msg.process(conn, &mut self.frontend) {
@@ -83,23 +106,17 @@ impl Worker {
 
             debug!("worker {}, conn {} | {:?} -> {:?}", self.id, token.0, msg_type, resp.message_type());
 
-            // TODO: don't unwrap
-            conn.write_value(&resp).unwrap();
-
-            // TODO: close connection if read or write fails
-
-            return;
+            conn.write_value(&resp)?;
         }
 
-        // TODO: is there anything else we need to do here?
-        error!("Unable to handle token {:?}", token);
+        Ok(())
     }
 
     fn accept(&mut self, conn: Connection) {
         let result = match self.connections.add_conn(conn) {
             Added(conn_ref, token) => {
                 self.poll.register(conn_ref, token, Ready::readable(), PollOpt::edge())
-            },
+            }
             Rejected(conn) => conn.close()
         };
 
@@ -122,12 +139,22 @@ impl Worker {
         }
     }
 
-    fn disconnect(&mut self, token: Token) -> io::Result<()> {
+    fn disconnect(&mut self, token: Token, code: Option<ErrorCode>) -> io::Result<()> {
         let conn = self.connections.remove_conn(token);
 
         match conn {
-            Some(conn) => self.poll.deregister(&conn),
-            None => Ok(())
+            Some(mut conn) => {
+                self.poll.deregister(&conn)?;
+
+                // We're intentionally ignoring the result here
+                // don't need the guarantee that the error code has come through
+                if let Some(code) = code {
+                    let _ = conn.write_value(&ErrorMessage::new(code));
+                }
+
+                Ok(())
+            }
+            None => { Ok(()) }
         }
     }
 }
