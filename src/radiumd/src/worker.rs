@@ -19,10 +19,13 @@ pub enum WorkerMessage {
     Push(Entry)
 }
 
+#[derive(Debug)]
 pub enum WorkerError {
     ReadError(ReadError),
     IoError(io::Error)
 }
+
+type WorkerResult<T> = Result<T, WorkerError>;
 
 pub struct Worker {
     id: usize,
@@ -46,9 +49,11 @@ impl From<ReadError> for WorkerError {
 
 impl Worker {
     pub fn new(id: usize, poll: Poll, receiver: Receiver<WorkerMessage>, frontend: Frontend<EntryData>) -> Self {
+        let connections = env_var!("RADIUM_WORKER_CONNECTIONS", DEFAULT_WORKER_CONNECTIONS);
+
         Worker {
             id,
-            connections: Connections::with_capacity(env_var!("RADIUM_WORKER_CONNECTIONS", DEFAULT_WORKER_CONNECTIONS)),
+            connections: Connections::with_capacity(connections),
             poll,
             receiver,
             frontend,
@@ -83,8 +88,8 @@ impl Worker {
             let msg = self.receiver.try_recv().unwrap();
 
             return match msg {
-                WorkerMessage::Connection(conn) => self.accept(conn),
-                WorkerMessage::Push(entry) => self.push(entry)
+                WorkerMessage::Connection(conn) => { self.accept(conn) }
+                WorkerMessage::Push(entry) => { self.push(entry) }
             }
         }
 
@@ -93,15 +98,15 @@ impl Worker {
         }
     }
 
-    fn handle_msg(&mut self, token: Token) -> Result<(), WorkerError> {
+    fn handle_msg(&mut self, token: Token) -> WorkerResult<()> {
         if let Some(conn) = self.connections.get_conn_mut(token) {
             let msg: Message = conn.read_value::<Message>()?;
 
             let msg_type = msg.message_type();
 
             let resp: Message = match msg.process(conn, &mut self.frontend) {
-                Ok(resp) => resp,
-                Err(err) => err.into()
+                Ok(resp) => { resp }
+                Err(err) => { err.into() }
             };
 
             debug!("worker {}, conn {} | {:?} -> {:?}", self.id, token.0, msg_type, resp.message_type());
@@ -117,7 +122,7 @@ impl Worker {
             Added(conn_ref, token) => {
                 self.poll.register(conn_ref, token, Ready::readable(), PollOpt::edge())
             }
-            Rejected(conn) => conn.close()
+            Rejected(conn) => { conn.close() }
         };
 
         // TODO: idk what to do with this result
@@ -139,7 +144,7 @@ impl Worker {
         }
     }
 
-    fn disconnect(&mut self, token: Token, code: Option<ErrorCode>) -> io::Result<()> {
+    fn disconnect(&mut self, token: Token, code: Option<ErrorCode>) -> WorkerResult<()> {
         let conn = self.connections.remove_conn(token);
 
         match conn {

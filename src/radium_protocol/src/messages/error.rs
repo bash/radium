@@ -18,6 +18,8 @@ pub enum ErrorCode {
     ActionNotImplemented,
     /// The message that was sent is not an action
     InvalidAction,
+    /// An error occurred when processing the action
+    ActionProcessingError,
     /// This message is sent when the connection is somehow broken
     /// e.g. reads and/or writes fail
     ConnectionFailure,
@@ -29,7 +31,8 @@ impl Into<u8> for ErrorCode {
             ErrorCode::ClientRejected => 0,
             ErrorCode::ActionNotImplemented => 1,
             ErrorCode::InvalidAction => 2,
-            ErrorCode::ConnectionFailure => 3,
+            ErrorCode::ActionProcessingError => 3,
+            ErrorCode::ConnectionFailure => 4,
         }
     }
 }
@@ -42,7 +45,8 @@ impl TryFrom<u8> for ErrorCode {
             0 => Ok(ErrorCode::ClientRejected),
             1 => Ok(ErrorCode::ActionNotImplemented),
             2 => Ok(ErrorCode::InvalidAction),
-            3 => Ok(ErrorCode::ConnectionFailure),
+            3 => Ok(ErrorCode::ActionProcessingError),
+            4 => Ok(ErrorCode::ConnectionFailure),
             _ => Err(TryFromError::InvalidValue),
         }
     }
