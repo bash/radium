@@ -12,6 +12,7 @@ pub enum Message {
     RemoveEntry(RemoveEntry),
     // `EntryRemoved` should also contain the entry's data. However, this requires changing
     // libradium, because the frontend does not block when adding or removing entries.
+    // until then, we use Ok as confirmation
     EntryRemoved,
     EntryExpired(EntryExpired),
     SetWatchMode(SetWatchMode),
