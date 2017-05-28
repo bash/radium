@@ -6,19 +6,31 @@ use super::errors::TryFromError;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum MessageType {
+    /// 0x00
     Ping,
+    /// 0x01
     Pong,
+    /// 0x02
     AddEntry,
+    /// 0x03
     EntryAdded,
+    /// 0x04
     RemoveEntry,
+    /// 0x05
+    #[doc(hidden)]
     EntryRemoved,
+    /// 0x06
     EntryExpired,
+    /// 0x07
     SetWatchMode,
+    /// 0x08
     Ok,
+    /// 0x09
     Error,
 }
 
 impl MessageType {
+    /// Determines if the message is a command that is handled by the server
     pub fn is_command(self) -> bool {
         match self {
             MessageType::Ping |

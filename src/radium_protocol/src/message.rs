@@ -13,6 +13,7 @@ pub enum Message {
     // `EntryRemoved` should also contain the entry's data. However, this requires changing
     // libradium, because the frontend does not block when adding or removing entries.
     // until then, we use Ok as confirmation
+    #[doc(hidden)]
     EntryRemoved,
     EntryExpired(EntryExpired),
     SetWatchMode(SetWatchMode),
@@ -36,6 +37,7 @@ impl Message {
         }
     }
 
+    /// Determines if the message is a command that is handled by the server
     pub fn is_command(&self) -> bool {
         self.message_type().is_command()
     }
@@ -109,7 +111,7 @@ mod test {
     test_message!(test_pong, Pong);
 
     test_message!(test_add_entry,
-                  Message::AddEntry(AddEntry::new(0, vec![])),
+                  Message::AddEntry(AddEntry::new(0, 0, vec![])),
                   MessageType::AddEntry);
 
     test_message!(test_entry_added,
@@ -123,7 +125,7 @@ mod test {
     test_message!(test_entry_removed, EntryRemoved);
 
     test_message!(test_entry_expired,
-                  Message::EntryExpired(EntryExpired::new(0, 7, vec![])),
+                  Message::EntryExpired(EntryExpired::new(0, 7, 12, vec![])),
                   MessageType::EntryExpired);
 
     test_message!(test_ok, Ok);

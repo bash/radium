@@ -22,19 +22,25 @@ fn get_max_data_bytes() -> u64 {
 #[derive(Debug)]
 pub struct AddEntry {
     timestamp: i64,
+    tag: u64,
     data: Vec<u8>,
 }
 
 impl AddEntry {
-    pub fn new<T: Into<i64>>(timestamp: T, data: Vec<u8>) -> Self {
+    pub fn new<T: Into<i64>>(timestamp: T, tag: u64, data: Vec<u8>) -> Self {
         AddEntry {
             timestamp: timestamp.into(),
+            tag,
             data
         }
     }
 
     pub fn timestamp(&self) -> i64 {
         self.timestamp
+    }
+
+    pub fn tag(&self) -> u64 {
+        self.tag
     }
 
     pub fn data(&self) -> &[u8] {
@@ -49,6 +55,7 @@ impl AddEntry {
 impl ReadFrom for AddEntry {
     fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
         let timestamp = source.read_i64::<NetworkEndian>()?;
+        let tag = source.read_u64::<NetworkEndian>()?;
         let length = source.read_u16::<NetworkEndian>()? as u64;
 
         if length > get_max_data_bytes() {
@@ -62,7 +69,7 @@ impl ReadFrom for AddEntry {
             return Err(ReadError::UnexpectedEof);
         }
 
-        Ok(AddEntry::new(timestamp, buf))
+        Ok(AddEntry::new(timestamp, tag, buf))
     }
 }
 
@@ -75,6 +82,7 @@ impl WriteTo for AddEntry {
         }
 
         target.write_i64::<NetworkEndian>(self.timestamp)?;
+        target.write_u64::<NetworkEndian>(self.tag)?;
         target.write_u16::<NetworkEndian>(len as u16)?;
 
         target.write(&self.data)?;
@@ -92,6 +100,7 @@ mod test {
     fn test_read() {
         let mut source: Vec<u8> = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
+            /* tag  */ 0, 0, 0, 0, 0, 0, 0, 42,
             /* len  */ 0, 3,
             /* data */ 1, 2, 3
         ];
@@ -99,6 +108,7 @@ mod test {
         let msg = AddEntry::read_from(&mut source.as_mut_slice().as_ref()).unwrap();
 
         assert_eq!(10, msg.timestamp());
+        assert_eq!(42, msg.tag());
         assert_eq!(&[1, 2, 3], msg.data());
         assert_eq!(3, msg.data().len());
     }
@@ -107,6 +117,7 @@ mod test {
     fn test_read_respects_size() {
         let mut source: Vec<u8> = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
+            /* tag  */ 0, 0, 0, 0, 0, 0, 255, 255,
             /* len  */ 0, 3,
             /* data */ 1, 2, 3, 4
         ];
@@ -114,6 +125,7 @@ mod test {
         let msg = AddEntry::read_from(&mut source.as_mut_slice().as_ref()).unwrap();
 
         assert_eq!(10, msg.timestamp());
+        assert_eq!(65535, msg.tag());
         assert_eq!(&[1, 2, 3], msg.data());
         assert_eq!(3, msg.data().len());
     }
@@ -122,6 +134,7 @@ mod test {
     fn test_fails_on_data_eof() {
         let mut source: Vec<u8> = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
+            /* tag */  0, 0, 0, 0, 0, 0, 0, 123,
             /* len  */ 0, 10,
             /* data */ 1, 2, 3
         ];
@@ -133,7 +146,7 @@ mod test {
 
     #[test]
     fn test_write() {
-        let cmd = AddEntry::new(10, vec![1, 2, 3]);
+        let cmd = AddEntry::new(10, 128, vec![1, 2, 3]);
         let mut vec = Vec::<u8>::new();
 
         assert!(cmd.write_to(&mut vec).is_ok());
@@ -141,6 +154,7 @@ mod test {
         assert_eq!(
             vec![
                 /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
+                /* tag  */ 0, 0, 0, 0, 0, 0, 0, 128,
                 /* len  */ 0, 3,
                 /* data */ 1, 2, 3
             ],
@@ -156,7 +170,7 @@ mod test {
             data.push(0);
         }
 
-        let cmd = AddEntry::new(0, data);
+        let cmd = AddEntry::new(0, 0, data);
         let mut target = Vec::<u8>::new();
 
         let result = cmd.write_to(&mut target);

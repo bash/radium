@@ -9,20 +9,26 @@ use super::super::errors::{ReadError, WriteError};
 pub struct EntryExpired {
     timestamp: i64,
     id: u16,
+    tag: u64,
     data: Vec<u8>,
 }
 
 impl EntryExpired {
-    pub fn new<T: Into<i64>>(timestamp: T, id: u16, data: Vec<u8>) -> Self {
+    pub fn new<T: Into<i64>>(timestamp: T, id: u16, tag: u64, data: Vec<u8>) -> Self {
         EntryExpired {
             timestamp: timestamp.into(),
             id,
+            tag,
             data,
         }
     }
 
     pub fn timestamp(&self) -> i64 {
         self.timestamp
+    }
+
+    pub fn tag(&self) -> u64 {
+        self.tag
     }
 
     pub fn id(&self) -> u16 {
@@ -38,6 +44,7 @@ impl ReadFrom for EntryExpired {
     fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
         let timestamp = source.read_i64::<NetworkEndian>()?;
         let id = source.read_u16::<NetworkEndian>()?;
+        let tag = source.read_u64::<NetworkEndian>()?;
         let length = source.read_u16::<NetworkEndian>()? as u64;
 
         let mut buf = Vec::new();
@@ -47,7 +54,7 @@ impl ReadFrom for EntryExpired {
             return Err(ReadError::UnexpectedEof);
         }
 
-        Ok(EntryExpired::new(timestamp, id, buf))
+        Ok(EntryExpired::new(timestamp, id, tag, buf))
     }
 }
 
@@ -61,6 +68,7 @@ impl WriteTo for EntryExpired {
 
         target.write_i64::<NetworkEndian>(self.timestamp)?;
         target.write_u16::<NetworkEndian>(self.id)?;
+        target.write_u64::<NetworkEndian>(self.tag)?;
         target.write_u16::<NetworkEndian>(len as u16)?;
 
         target.write(&self.data)?;
@@ -79,6 +87,7 @@ mod test {
         let mut source: Vec<u8> = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* id   */ 0, 7,
+            /* tag  */ 0, 0, 0, 0, 0, 0, 0, 42,
             /* len  */ 0, 3,
             /* data */ 1, 2, 3,
         ];
@@ -87,6 +96,7 @@ mod test {
 
         assert_eq!(10, msg.timestamp());
         assert_eq!(7, msg.id());
+        assert_eq!(42, msg.tag());
         assert_eq!(&[1, 2, 3], msg.data());
         assert_eq!(3, msg.data().len());
     }
@@ -96,6 +106,7 @@ mod test {
         let mut source: Vec<u8> = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* id   */ 0, 7,
+            /* tag  */ 0, 0, 0, 0, 0, 0, 0, 32,
             /* len  */ 0, 3,
             /* data */ 1, 2, 3, 4,
         ];
@@ -104,6 +115,7 @@ mod test {
 
         assert_eq!(10, msg.timestamp());
         assert_eq!(7, msg.id());
+        assert_eq!(32, msg.tag());
         assert_eq!(&[1, 2, 3], msg.data());
         assert_eq!(3, msg.data().len());
     }
@@ -113,6 +125,7 @@ mod test {
         let mut source: Vec<u8> = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* id   */ 0, 7,
+            /* tag  */ 0, 0, 0, 0, 0, 0, 0, 42,
             /* len  */ 0, 10,
             /* data */ 1, 2, 3,
         ];
@@ -124,7 +137,7 @@ mod test {
 
     #[test]
     fn test_write() {
-        let cmd = EntryExpired::new(10, 7, vec![1, 2, 3]);
+        let cmd = EntryExpired::new(10, 7, 12, vec![1, 2, 3]);
         let mut vec = Vec::<u8>::new();
 
         assert!(cmd.write_to(&mut vec).is_ok());
@@ -133,6 +146,7 @@ mod test {
             vec![
                 /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
                 /* id   */ 0, 7,
+                /* tag  */ 0, 0, 0, 0, 0, 0, 0, 12,
                 /* len  */ 0, 3,
                 /* data */ 1, 2, 3,
             ],
@@ -148,7 +162,7 @@ mod test {
             data.push(0);
         }
 
-        let cmd = EntryExpired::new(0, 7, data);
+        let cmd = EntryExpired::new(0, 7, 0, data);
         let mut target = Vec::<u8>::new();
 
         let result = cmd.write_to(&mut target);
