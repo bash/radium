@@ -17,7 +17,10 @@ pub enum ErrorCode {
     /// The action that was sent is not implemented
     ActionNotImplemented,
     /// The message that was sent is not an action
-    InvalidAction
+    InvalidAction,
+    /// This message is sent when the connection is somehow broken
+    /// e.g. reads and/or writes fail
+    ConnectionFailure,
 }
 
 impl Into<u8> for ErrorCode {
@@ -25,7 +28,8 @@ impl Into<u8> for ErrorCode {
         match self {
             ErrorCode::ClientRejected => 0,
             ErrorCode::ActionNotImplemented => 1,
-            ErrorCode::InvalidAction => 2
+            ErrorCode::InvalidAction => 2,
+            ErrorCode::ConnectionFailure => 3,
         }
     }
 }
@@ -38,6 +42,7 @@ impl TryFrom<u8> for ErrorCode {
             0 => Ok(ErrorCode::ClientRejected),
             1 => Ok(ErrorCode::ActionNotImplemented),
             2 => Ok(ErrorCode::InvalidAction),
+            3 => Ok(ErrorCode::ConnectionFailure),
             _ => Err(TryFromError::InvalidValue),
         }
     }
