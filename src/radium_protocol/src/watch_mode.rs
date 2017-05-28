@@ -1,7 +1,7 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
 use std::io;
 use super::errors::ReadError;
-use super::{ReadFrom, WriteTo, ReadResult, WriteResult};
+use super::{ReadFrom, WriteTo, ReadResult, WriteResult, Reader, ReaderStatus};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 /// The `WatchMode` indicates whether the client wants to be notified about
@@ -15,6 +15,18 @@ pub enum WatchMode {
     Tagged(u64)
 }
 
+#[derive(Debug)]
+enum WatchModeReaderState {
+    Mode,
+    Tag,
+    Ended,
+}
+
+#[derive(Debug)]
+pub struct WatchModeReader {
+    state: WatchModeReaderState
+}
+
 impl WatchMode {
     pub fn matches_tag(&self, tag: u64) -> bool {
         match self {
@@ -22,6 +34,43 @@ impl WatchMode {
             &WatchMode::All => true,
             &WatchMode::Tagged(val) => val == tag,
         }
+    }
+
+    pub fn reader() -> WatchModeReader {
+        WatchModeReader { state: WatchModeReaderState::Mode }
+    }
+}
+
+impl<R: io::Read> Reader<WatchMode, R> for WatchModeReader {
+    fn resume(&mut self, input: &mut R) -> io::Result<ReaderStatus<WatchMode>> {
+        let (state, status) = match self.state {
+            WatchModeReaderState::Mode => {
+                let mode = input.read_u8()?;
+
+                match mode {
+                    0 => (WatchModeReaderState::Ended, ReaderStatus::Complete(WatchMode::None)),
+                    1 => (WatchModeReaderState::Ended, ReaderStatus::Complete(WatchMode::All)),
+                    2 => (WatchModeReaderState::Tag, ReaderStatus::Pending),
+                    _ => { panic!("TODO: catch invalid values") }
+                }
+            }
+            WatchModeReaderState::Tag => {
+                let tag = input.read_u64::<NetworkEndian>()?;
+
+                (WatchModeReaderState::Ended, ReaderStatus::Complete(WatchMode::Tagged(tag)))
+            }
+            WatchModeReaderState::Ended => {
+                (WatchModeReaderState::Ended, ReaderStatus::Ended)
+            }
+        };
+
+        self.state = state;
+
+        Ok(status)
+    }
+
+    fn rewind(&mut self) {
+        self.state = WatchModeReaderState::Mode;
     }
 }
 
@@ -36,7 +85,7 @@ impl ReadFrom for WatchMode {
                 let tag = source.read_u64::<NetworkEndian>()?;
 
                 Ok(WatchMode::Tagged(tag))
-            },
+            }
             _ => { Err(ReadError::InvalidValue) }
         }
     }

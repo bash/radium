@@ -2,7 +2,7 @@ use std::env;
 use std::io;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{ReadFrom, WriteTo, ReadResult, WriteResult};
+use super::super::{ReadFrom, WriteTo, ReadResult, WriteResult, ReaderStatus, Reader};
 use super::super::errors::{ReadError, WriteError};
 
 /// default value for maximum bytes of data (2KiB)
@@ -24,6 +24,18 @@ pub struct AddEntry {
     timestamp: i64,
     tag: u64,
     data: Vec<u8>,
+}
+
+enum AddEntryReaderState {
+    Timestamp,
+    Tag(i64),
+    Length(i64, u64),
+    Data(i64, u64, u16),
+    Complete(i64, u64, u16, Vec<u8>),
+}
+
+struct AddEntryReader {
+    state: AddEntryReaderState,
 }
 
 impl AddEntry {
@@ -49,6 +61,31 @@ impl AddEntry {
 
     pub fn consume_data(self) -> Vec<u8> {
         self.data
+    }
+
+    fn reader() -> AddEntryReader {
+        AddEntryReader { state: AddEntryReaderState::Timestamp }
+    }
+}
+
+impl<R: io::Read> Reader<AddEntry, R> for AddEntryReader {
+    fn resume(&mut self, input: &mut R) -> io::Result<ReaderStatus<AddEntry>> {
+        let (state, status) = match self.state {
+            AddEntryReaderState::Timestamp => {
+                let timestamp = input.read_i64::<NetworkEndian>()?;
+
+                (AddEntryReaderState::Tag(timestamp), ReaderStatus::Pending)
+            },
+            _ => { panic!("") }
+        };
+
+        self.state = state;
+
+        Ok(status)
+    }
+
+    fn rewind(&mut self) {
+        self.state = AddEntryReaderState::Timestamp;
     }
 }
 

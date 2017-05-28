@@ -1,7 +1,8 @@
 use std::io;
 use byteorder::WriteBytesExt;
-use super::{MessageType, ReadFrom, WriteTo, ReadResult, WriteResult};
-use super::messages::{AddEntry, EntryAdded, EntryExpired, RemoveEntry, SetWatchMode, ErrorMessage};
+use super::{MessageType, ReadFrom, WriteTo, ReadResult, WriteResult, ReaderStatus, Reader};
+use super::messages::{AddEntry, EntryAdded, EntryExpired, RemoveEntry, SetWatchMode, ErrorMessage, SetWatchModeReader};
+use super::errors::ReadError;
 
 #[derive(Debug)]
 pub enum Message {
@@ -19,6 +20,19 @@ pub enum Message {
     SetWatchMode(SetWatchMode),
     Ok,
     Error(ErrorMessage),
+}
+
+#[derive(Debug)]
+enum MessageReaderState {
+    Type,
+    Message(MessageType),
+    SetWatchMode(SetWatchModeReader),
+    Ended
+}
+
+#[derive(Debug)]
+pub struct MessageReader {
+    state: MessageReaderState
 }
 
 impl Message {
@@ -40,6 +54,66 @@ impl Message {
     /// Determines if the message is a command that is handled by the server
     pub fn is_command(&self) -> bool {
         self.message_type().is_command()
+    }
+
+    pub fn reader() -> MessageReader {
+        MessageReader { state: MessageReaderState::Type }
+    }
+}
+
+impl<R: io::Read> Reader<Message, R> for MessageReader {
+    fn resume(&mut self, input: &mut R) -> io::Result<ReaderStatus<Message>> {
+        let (state, status) = match self.state {
+            MessageReaderState::Ended => {
+                (None, ReaderStatus::Ended)
+            }
+            MessageReaderState::Type => {
+                // TODO: use a reader instead read_from
+                let msg_type = match MessageType::read_from(input) {
+                    Err(ReadError::IoError(err)) => { return Err(err) }
+                    Ok(val) => { val }
+                    _ => { panic!("not implemented") }
+                };
+
+                (Some(MessageReaderState::Message(msg_type)), ReaderStatus::Pending)
+            }
+            MessageReaderState::Message(msg_type) => {
+                match msg_type {
+                    MessageType::Ping => {
+                        (Some(MessageReaderState::Ended), ReaderStatus::Complete(Message::Ping))
+                    }
+                    MessageType::SetWatchMode => {
+                        (Some(MessageReaderState::SetWatchMode(SetWatchMode::reader())), ReaderStatus::Pending)
+                    }
+                    _ => { panic!("not implemented") }
+                }
+            }
+            MessageReaderState::SetWatchMode(ref mut reader) => {
+                match reader.resume(input)? {
+                    ReaderStatus::Pending => {
+                        (None, ReaderStatus::Pending)
+                    }
+                    ReaderStatus::Ended => {
+                        (Some(MessageReaderState::Ended), ReaderStatus::Ended)
+                    }
+                    ReaderStatus::Complete(inner) => {
+                        let msg = Message::SetWatchMode(inner);
+
+                        (Some(MessageReaderState::Ended), ReaderStatus::Complete(msg))
+                    }
+                }
+            }
+        };
+
+        if let Some(state) = state {
+            self.state = state;
+        }
+
+        Ok(status)
+    }
+
+    fn rewind(&mut self) {
+        self.state = MessageReaderState::Type;
     }
 }
 

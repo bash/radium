@@ -3,17 +3,18 @@ use std::net::Shutdown;
 use mio::{Evented, Poll, Token, Ready, PollOpt};
 use mio::tcp::TcpStream;
 use slab::{Slab, IterMut};
-use radium_protocol::WatchMode;
+use radium_protocol::{WatchMode, ReaderController, Message, MessageReader, ReaderStatus};
 pub use self::AddConnResult::{Added, Rejected};
 
 pub struct Connection {
     sock: TcpStream,
     watch_mode: WatchMode,
+    reader: ReaderController<MessageReader>
 }
 
 pub enum AddConnResult<'a> {
     Added(&'a Connection, Token),
-    Rejected(Connection)
+    Rejected(Connection),
 }
 
 pub struct Connections {
@@ -24,7 +25,8 @@ impl Connection {
     pub fn new(sock: TcpStream) -> Self {
         Connection {
             sock,
-            watch_mode: WatchMode::None
+            watch_mode: WatchMode::None,
+            reader: ReaderController::new(Message::reader())
         }
     }
 
@@ -32,14 +34,23 @@ impl Connection {
         self.watch_mode = mode;
     }
 
-    // TODO: remove #[allow(dead_code)]
-    #[allow(dead_code)]
     pub fn watch_mode(&self) -> WatchMode {
         self.watch_mode
     }
 
     pub fn close(&self) -> io::Result<()> {
         self.sock.shutdown(Shutdown::Both)
+    }
+
+    pub fn read_message(&mut self) -> io::Result<Option<Message>> {
+        match self.reader.resume(&mut self.sock)? {
+            ReaderStatus::Ended => { panic!("State should not exist") }
+            ReaderStatus::Pending => { Ok(None) }
+            ReaderStatus::Complete(val) => {
+                self.reader.rewind::<Message, TcpStream>();
+                Ok(Some(val))
+            }
+        }
     }
 }
 

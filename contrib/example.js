@@ -17,7 +17,18 @@ const UInt8 = (value) => {
   return buf
 }
 
-const WatchMode = Object.freeze({ None: 0, Watching: 1 })
+const UInt64 = (value) => {
+  const buf = Buffer.alloc(8)
+
+  buf.fill(0)
+
+  buf.writeUInt32BE(value >> 8, 0)
+  buf.writeUInt32BE(value & 0x00ff, 4)
+
+  return buf
+}
+
+const WatchMode = Object.freeze({ None: 0, All: 1, Tagged: 2 })
 
 class Ping {
   write (socket) {
@@ -26,13 +37,18 @@ class Ping {
 }
 
 class SetWatchMode {
-  constructor (mode) {
+  constructor (mode, tag) {
     this._mode = mode
+    this._tag = tag
   }
 
   write (socket) {
     socket.write(UInt8(7))
     socket.write(UInt8(this._mode))
+
+    if (this._tag !== null && this._mode === WatchMode.Tagged) {
+      socket.write(UInt64(this._tag))
+    }
   }
 }
 
@@ -85,7 +101,7 @@ radium.onConnected()
     console.log('Received', resp)
 
     if (enableWatchMode) {
-      return radium.action(new SetWatchMode(WatchMode.Watching))
+      return radium.action(new SetWatchMode(WatchMode.Tagged, process.argv[3]))
     }
   })
   .then(() => {

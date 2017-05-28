@@ -6,7 +6,7 @@ use libradium::Frontend;
 use mio_channel::Receiver;
 use mio::{Poll, Token, Ready, PollOpt, Events, Event};
 use mio::unix::UnixReady;
-use radium_protocol::{Message, ReadValueExt, WriteValueExt, ErrorCode};
+use radium_protocol::{Message, ReadValueExt, WriteValueExt, ErrorCode, ReaderStatus};
 use radium_protocol::errors::{ReadError, WriteError};
 use radium_protocol::messages::{EntryExpired, ErrorMessage};
 
@@ -129,14 +129,18 @@ impl Worker {
         }
 
         if let Err(err) = self.handle_msg(token) {
-            println!("Disconnecting because handle {:?}", err);
             self.disconnect(token, Some(ErrorCode::ConnectionFailure)).unwrap();
         }
     }
 
     fn handle_msg(&mut self, token: Token) -> WorkerResult<()> {
         if let Some(conn) = self.connections.get_conn_mut(token) {
-            let msg: Message = conn.read_value::<Message>()?;
+            let msg: Message = match conn.read_message()? {
+                Some(msg) => { msg }
+                None => { return Ok(()) }
+            };
+
+            debug!("worker {}, conn {} | {:?}", self.id, token.0, msg);
 
             let msg_type = msg.message_type();
 
