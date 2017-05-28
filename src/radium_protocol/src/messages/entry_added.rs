@@ -44,19 +44,17 @@ impl WriteTo for EntryAdded {
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::super::Message;
     use super::super::super::WriteTo;
 
     #[test]
     fn test_write() {
-        let msg = Message::EntryAdded(EntryAdded::new(12345, 23));
+        let msg = EntryAdded::new(12345, 23);
         let mut vec = Vec::<u8>::new();
 
         assert!(msg.write_to(&mut vec).is_ok());
 
         assert_eq!(
             vec![
-                /* cmd */ 4,
                 /* ts  */ 0, 0, 0, 0, 0, 0, 48, 57,
                 /* id  */ 0, 23,
             ],
