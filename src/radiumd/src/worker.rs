@@ -6,7 +6,7 @@ use libradium::Frontend;
 use mio_channel::Receiver;
 use mio::{Poll, Token, Ready, PollOpt, Events, Event};
 use mio::unix::UnixReady;
-use radium_protocol::{Message, ReadValue, WriteValue, WatchMode, ReadError, WriteError, ErrorCode};
+use radium_protocol::{Message, ReadValueExt, WriteValueExt, WatchMode, ReadError, WriteError, ErrorCode};
 use radium_protocol::messages::{EntryExpired, ErrorMessage};
 
 use super::actions::Action;
