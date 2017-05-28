@@ -2,7 +2,8 @@ use std::env;
 use std::io;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{ReadFrom, WriteTo, ReadError, EntryWriteError};
+use super::super::{ReadFrom, WriteTo, ReadResult, WriteResult};
+use super::super::errors::{ReadError, WriteError};
 
 /// default value for maximum bytes of data (2KiB)
 const MAX_DATA_BYTES: u64 = 2048;
@@ -46,7 +47,7 @@ impl AddEntry {
 }
 
 impl ReadFrom for AddEntry {
-    fn read_from<R: io::Read>(source: &mut R) -> Result<Self, ReadError> {
+    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
         let timestamp = source.read_i64::<NetworkEndian>()?;
         let length = source.read_u16::<NetworkEndian>()? as u64;
 
@@ -66,11 +67,11 @@ impl ReadFrom for AddEntry {
 }
 
 impl WriteTo for AddEntry {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
+    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
         let len = self.data.len();
 
         if len > u16::max_value() as usize {
-            return Err(io::Error::new(io::ErrorKind::Other, EntryWriteError::DataLengthOverflow));
+            return Err(WriteError::DataLengthOverflow);
         }
 
         target.write_i64::<NetworkEndian>(self.timestamp)?;
@@ -161,6 +162,6 @@ mod test {
         let result = cmd.write_to(&mut target);
 
         assert!(result.is_err());
-        assert!(result.err().unwrap().description() == EntryWriteError::DataLengthOverflow.description())
+        assert!(result.err().unwrap().description() == WriteError::DataLengthOverflow.description())
     }
 }

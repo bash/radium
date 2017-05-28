@@ -1,6 +1,6 @@
 use std::io;
 use byteorder::WriteBytesExt;
-use super::{MessageType, ReadFrom, ReadError, WriteTo};
+use super::{MessageType, ReadFrom, WriteTo, ReadResult, WriteResult};
 use super::messages::{AddEntry, EntryAdded, EntryExpired, RemoveEntry, SetWatchMode, ErrorMessage};
 
 #[derive(Debug)]
@@ -42,7 +42,7 @@ impl Message {
 }
 
 impl ReadFrom for Message {
-    fn read_from<R: io::Read>(source: &mut R) -> Result<Self, ReadError> {
+    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
         let msg_type = MessageType::read_from(source)?;
 
         match msg_type {
@@ -61,7 +61,7 @@ impl ReadFrom for Message {
 }
 
 impl WriteTo for Message {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
+    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
         target.write_u8(self.message_type().into())?;
 
         match self {
@@ -82,8 +82,7 @@ impl WriteTo for Message {
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::WatchMode;
-    use super::super::messages::ErrorCode;
+    use super::super::{WatchMode, ErrorCode};
 
     macro_rules! test_message {
         ($test:ident, $ty:ident) => {

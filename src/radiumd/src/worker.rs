@@ -1,11 +1,13 @@
 use std::io;
+use std::error::Error;
+use std::fmt;
 
 use libradium::Frontend;
 use mio_channel::Receiver;
 use mio::{Poll, Token, Ready, PollOpt, Events, Event};
 use mio::unix::UnixReady;
-use radium_protocol::{Message, ReadValue, WriteValue, WatchMode, ReadError};
-use radium_protocol::messages::{EntryExpired, ErrorMessage, ErrorCode};
+use radium_protocol::{Message, ReadValue, WriteValue, WatchMode, ReadError, WriteError, ErrorCode};
+use radium_protocol::messages::{EntryExpired, ErrorMessage};
 
 use super::actions::Action;
 use super::connection::{Connection, Connections, Added, Rejected};
@@ -22,6 +24,7 @@ pub enum WorkerMessage {
 #[derive(Debug)]
 pub enum WorkerError {
     ReadError(ReadError),
+    WriteError(WriteError),
     IoError(io::Error)
 }
 
@@ -35,6 +38,30 @@ pub struct Worker {
     frontend: Frontend<EntryData>,
 }
 
+impl fmt::Display for WorkerError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.description())
+    }
+}
+
+impl Error for WorkerError {
+    fn description(&self) -> &str {
+        match self {
+            &WorkerError::ReadError(ref err) => err.description(),
+            &WorkerError::WriteError(ref err) => err.description(),
+            &WorkerError::IoError(ref err) => err.description(),
+        }
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        match self {
+            &WorkerError::ReadError(ref err) => err.cause(),
+            &WorkerError::WriteError(ref err) => err.cause(),
+            &WorkerError::IoError(ref err) => err.cause(),
+        }
+    }
+}
+
 impl From<io::Error> for WorkerError {
     fn from(err: io::Error) -> Self {
         WorkerError::IoError(err)
@@ -44,6 +71,12 @@ impl From<io::Error> for WorkerError {
 impl From<ReadError> for WorkerError {
     fn from(err: ReadError) -> Self {
         WorkerError::ReadError(err)
+    }
+}
+
+impl From<WriteError> for WorkerError {
+    fn from(err: WriteError) -> Self {
+        WorkerError::WriteError(err)
     }
 }
 

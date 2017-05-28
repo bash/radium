@@ -1,7 +1,8 @@
 use std::io;
 use std::convert::TryFrom;
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use super::{TryFromError, ReadError, ReadFrom, WriteTo};
+use super::{ReadFrom, WriteTo, ReadResult, WriteResult};
+use super::errors::TryFromError;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum MessageType {
@@ -34,7 +35,7 @@ impl MessageType {
 }
 
 impl ReadFrom for MessageType {
-    fn read_from<R: io::Read>(source: &mut R) -> Result<Self, ReadError> {
+    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
         let value = source.read_u8()?;
 
         Ok(Self::try_from(value)?)
@@ -42,8 +43,9 @@ impl ReadFrom for MessageType {
 }
 
 impl WriteTo for MessageType {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
-        target.write_u8((*self).into())
+    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
+        target.write_u8((*self).into())?;
+        Ok(())
     }
 }
 

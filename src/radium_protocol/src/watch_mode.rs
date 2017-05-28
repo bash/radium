@@ -1,5 +1,5 @@
 use std::convert::TryFrom;
-use super::TryFromError;
+use super::errors::TryFromError;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 /// The `WatchMode` indicates whether the client wants to be notified about

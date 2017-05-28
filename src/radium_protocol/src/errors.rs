@@ -15,8 +15,9 @@ pub enum ReadError {
 }
 
 #[derive(Debug)]
-pub enum EntryWriteError {
-    DataLengthOverflow,
+pub enum WriteError {
+    IoError(io::Error),
+    DataLengthOverflow
 }
 
 impl_err_display!(TryFromError);
@@ -59,12 +60,26 @@ impl Error for ReadError {
     }
 }
 
-impl_err_display!(EntryWriteError);
+impl_err_display!(WriteError);
 
-impl Error for EntryWriteError {
+impl Error for WriteError {
     fn description(&self) -> &str {
         match self {
-            &EntryWriteError::DataLengthOverflow => "Data overflows maximum length",
+            &WriteError::IoError(ref err) => err.description(),
+            &WriteError::DataLengthOverflow => "Data overflows maximum length",
         }
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        match self {
+            &WriteError::IoError(ref err) => err.cause(),
+            _ => None,
+        }
+    }
+}
+
+impl From<io::Error> for WriteError {
+    fn from(err: io::Error) -> Self {
+        WriteError::IoError(err)
     }
 }

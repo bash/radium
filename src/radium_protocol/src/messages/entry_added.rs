@@ -1,6 +1,6 @@
 use std::io;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{ReadFrom, WriteTo, ReadError};
+use super::super::{ReadFrom, WriteTo, ReadResult, WriteResult};
 
 /// ts: i64 | id: u16
 #[derive(Debug)]
@@ -24,7 +24,7 @@ impl EntryAdded {
 }
 
 impl ReadFrom for EntryAdded {
-    fn read_from<R: io::Read>(source: &mut R) -> Result<Self, ReadError> {
+    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
         let timestamp = source.read_i64::<NetworkEndian>()?;
         let id = source.read_u16::<NetworkEndian>()?;
 
@@ -33,7 +33,7 @@ impl ReadFrom for EntryAdded {
 }
 
 impl WriteTo for EntryAdded {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
+    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
         target.write_i64::<NetworkEndian>(self.timestamp)?;
         target.write_u16::<NetworkEndian>(self.id)?;
 

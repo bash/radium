@@ -1,7 +1,7 @@
 use std::io;
 use std::convert::TryFrom;
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use super::super::{ReadFrom, WriteTo, ReadError, WatchMode};
+use super::super::{ReadFrom, WriteTo, WatchMode, ReadResult, WriteResult};
 
 #[derive(Debug)]
 pub struct SetWatchMode {
@@ -19,7 +19,7 @@ impl SetWatchMode {
 }
 
 impl ReadFrom for SetWatchMode {
-    fn read_from<R: io::Read>(source: &mut R) -> Result<Self, ReadError> {
+    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
         let value = source.read_u8()?;
         let mode = WatchMode::try_from(value)?;
 
@@ -28,7 +28,7 @@ impl ReadFrom for SetWatchMode {
 }
 
 impl WriteTo for SetWatchMode {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> io::Result<()> {
+    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
         let value = self.mode.into();
 
         target.write_u8(value)?;
