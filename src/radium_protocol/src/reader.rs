@@ -1,7 +1,6 @@
 use std::io;
 use std::io::ErrorKind;
 use std::marker::PhantomData;
-use super::errors::{ReadError, WriteError};
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ReaderStatus<T> {

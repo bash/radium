@@ -1,6 +1,4 @@
 use std::io;
-use std::io::ErrorKind;
-use std::marker::PhantomData;
 use super::errors::{ReadError, WriteError};
 
 pub type WriteResult = Result<(), WriteError>;

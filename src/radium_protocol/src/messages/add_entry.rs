@@ -2,7 +2,7 @@ use std::env;
 use std::io;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{ReadFrom, WriteTo, ReadResult, WriteResult, ReaderStatus, Reader};
+use super::super::{ReadFrom, WriteTo, ReadResult, WriteResult, ReaderStatus, Reader, MessageInner, Message};
 use super::super::errors::{ReadError, WriteError, DataLengthError};
 
 use ReaderStatus::{Complete, Pending};
@@ -28,6 +28,7 @@ pub struct AddEntry {
     data: Vec<u8>,
 }
 
+#[derive(Debug)]
 enum ReaderState {
     Timestamp,
     Tag(i64),
@@ -35,7 +36,8 @@ enum ReaderState {
     Data(i64, u64, u64),
 }
 
-struct AddEntryReader {
+#[derive(Debug)]
+pub struct AddEntryReader {
     state: ReaderState,
 }
 
@@ -66,6 +68,12 @@ impl AddEntry {
 
     fn reader() -> AddEntryReader {
         AddEntryReader { state: ReaderState::Timestamp }
+    }
+}
+
+impl MessageInner for AddEntry {
+    fn wrap(self) -> Message {
+        Message::AddEntry(self)
     }
 }
 

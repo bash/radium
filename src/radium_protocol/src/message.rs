@@ -1,7 +1,7 @@
 use std::io;
 use byteorder::WriteBytesExt;
 use super::{MessageType, WriteTo, WriteResult, ReaderStatus, Reader};
-use super::messages::{AddEntry, EntryAdded, EntryExpired, RemoveEntry, SetWatchMode, ErrorMessage, SetWatchModeReader};
+use super::messages::{AddEntry, EntryAdded, EntryExpired, RemoveEntry, SetWatchMode, ErrorMessage, SetWatchModeReader, AddEntryReader};
 
 macro_rules! msg_reader {
     ($reader: expr, $input: expr) => {
@@ -53,7 +53,8 @@ pub enum Message {
 enum ReaderState {
     Type,
     Message(MessageType),
-    SetWatchMode(SetWatchModeReader)
+    SetWatchMode(SetWatchModeReader),
+    AddEntry(AddEntryReader)
 }
 
 #[derive(Debug)]
@@ -110,10 +111,12 @@ impl Reader<Message> for MessageReader {
                     MessageType::EntryRemoved => empty_msg!(EntryRemoved),
                     MessageType::Ok => empty_msg!(Ok),
                     MessageType::SetWatchMode => into_msg_reader!(SetWatchMode),
+                    MessageType::AddEntry => into_msg_reader!(AddEntry),
                     _ => { panic!("not implemented") }
                 }
             },
-            ReaderState::SetWatchMode(ref mut reader) => msg_reader!(reader, input)
+            ReaderState::SetWatchMode(ref mut reader) => msg_reader!(reader, input),
+            ReaderState::AddEntry(ref mut reader) => msg_reader!(reader, input),
         };
 
         if let Some(state) = state {
