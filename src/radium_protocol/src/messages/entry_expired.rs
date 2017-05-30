@@ -5,7 +5,7 @@ use super::super::{ReadFrom, WriteTo, ReadResult, WriteResult};
 use super::super::errors::{ReadError, WriteError};
 
 /// ts: i64 | id: u16 | len: u16 | data: (len < 2**16)
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct EntryExpired {
     timestamp: i64,
     id: u16,

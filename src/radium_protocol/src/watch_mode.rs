@@ -41,8 +41,8 @@ impl WatchMode {
     }
 }
 
-impl<R: io::Read> Reader<WatchMode, R> for WatchModeReader {
-    fn resume(&mut self, input: &mut R) -> io::Result<ReaderStatus<WatchMode>> {
+impl Reader<WatchMode> for WatchModeReader {
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<WatchMode>> where R: io::Read {
         let (state, status) = match self.state {
             WatchModeReaderState::Mode => {
                 let mode = input.read_u8()?;
@@ -51,7 +51,7 @@ impl<R: io::Read> Reader<WatchMode, R> for WatchModeReader {
                     0 => (WatchModeReaderState::Ended, ReaderStatus::Complete(WatchMode::None)),
                     1 => (WatchModeReaderState::Ended, ReaderStatus::Complete(WatchMode::All)),
                     2 => (WatchModeReaderState::Tag, ReaderStatus::Pending),
-                    _ => { panic!("TODO: catch invalid values") }
+                    _ => { panic!("TODO: catch invalid values {}", mode) }
                 }
             }
             WatchModeReaderState::Tag => {

@@ -1,10 +1,38 @@
 use std::io;
 use byteorder::WriteBytesExt;
-use super::{MessageType, ReadFrom, WriteTo, ReadResult, WriteResult, ReaderStatus, Reader};
+use super::{MessageType, WriteTo, WriteResult, ReaderStatus, Reader};
 use super::messages::{AddEntry, EntryAdded, EntryExpired, RemoveEntry, SetWatchMode, ErrorMessage, SetWatchModeReader};
-use super::errors::ReadError;
 
-#[derive(Debug)]
+macro_rules! msg_reader {
+    ($reader: expr, $input: expr) => {
+        match $reader.resume($input)? {
+            ReaderStatus::Pending => (None, ReaderStatus::Pending),
+            ReaderStatus::Ended => (Some(ReaderState::Ended), ReaderStatus::Ended),
+            ReaderStatus::Complete(inner) => {
+                let msg = inner.wrap();
+
+                (Some(ReaderState::Ended), ReaderStatus::Complete(msg))
+            },
+        }
+    }
+}
+
+macro_rules! into_msg_reader {
+    ($variant: ident) => {
+        into_msg_reader!($variant, $variant)
+    };
+    ($variant: ident, $msg: ident) => {
+        (Some(ReaderState::$variant($msg::reader())), ReaderStatus::Pending)
+    };
+}
+
+macro_rules! empty_msg {
+    ($variant: ident) => {
+        (Some(ReaderState::Ended), ReaderStatus::Complete(Message::$variant))
+    }
+}
+
+#[derive(Debug, Eq, PartialEq)]
 pub enum Message {
     Ping,
     Pong,
@@ -23,7 +51,7 @@ pub enum Message {
 }
 
 #[derive(Debug)]
-enum MessageReaderState {
+enum ReaderState {
     Type,
     Message(MessageType),
     SetWatchMode(SetWatchModeReader),
@@ -32,7 +60,12 @@ enum MessageReaderState {
 
 #[derive(Debug)]
 pub struct MessageReader {
-    state: MessageReaderState
+    state: ReaderState
+}
+
+pub trait MessageInner {
+    /// Wraps the inner message inside its corresponding `Message` variant
+    fn wrap(self) -> Message;
 }
 
 impl Message {
@@ -57,52 +90,34 @@ impl Message {
     }
 
     pub fn reader() -> MessageReader {
-        MessageReader { state: MessageReaderState::Type }
+        MessageReader { state: ReaderState::Type }
     }
 }
 
-impl<R: io::Read> Reader<Message, R> for MessageReader {
-    fn resume(&mut self, input: &mut R) -> io::Result<ReaderStatus<Message>> {
+impl Reader<Message> for MessageReader {
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Message>> where R: io::Read {
         let (state, status) = match self.state {
-            MessageReaderState::Ended => {
-                (None, ReaderStatus::Ended)
-            }
-            MessageReaderState::Type => {
-                // TODO: use a reader instead read_from
-                let msg_type = match MessageType::read_from(input) {
-                    Err(ReadError::IoError(err)) => { return Err(err) }
-                    Ok(val) => { val }
-                    _ => { panic!("not implemented") }
+            ReaderState::Type => {
+                let state = match MessageType::reader().resume(input)? {
+                    ReaderStatus::Pending => None,
+                    ReaderStatus::Ended => None,
+                    ReaderStatus::Complete(val) => Some(ReaderState::Message(val))
                 };
 
-                (Some(MessageReaderState::Message(msg_type)), ReaderStatus::Pending)
-            }
-            MessageReaderState::Message(msg_type) => {
+                (state, ReaderStatus::Pending)
+            },
+            ReaderState::Message(msg_type) => {
                 match msg_type {
-                    MessageType::Ping => {
-                        (Some(MessageReaderState::Ended), ReaderStatus::Complete(Message::Ping))
-                    }
-                    MessageType::SetWatchMode => {
-                        (Some(MessageReaderState::SetWatchMode(SetWatchMode::reader())), ReaderStatus::Pending)
-                    }
+                    MessageType::Ping => empty_msg!(Ping),
+                    MessageType::Pong => empty_msg!(Pong),
+                    MessageType::EntryRemoved => empty_msg!(EntryRemoved),
+                    MessageType::Ok => empty_msg!(Ok),
+                    MessageType::SetWatchMode => into_msg_reader!(SetWatchMode),
                     _ => { panic!("not implemented") }
                 }
-            }
-            MessageReaderState::SetWatchMode(ref mut reader) => {
-                match reader.resume(input)? {
-                    ReaderStatus::Pending => {
-                        (None, ReaderStatus::Pending)
-                    }
-                    ReaderStatus::Ended => {
-                        (Some(MessageReaderState::Ended), ReaderStatus::Ended)
-                    }
-                    ReaderStatus::Complete(inner) => {
-                        let msg = Message::SetWatchMode(inner);
-
-                        (Some(MessageReaderState::Ended), ReaderStatus::Complete(msg))
-                    }
-                }
-            }
+            },
+            ReaderState::SetWatchMode(ref mut reader) => msg_reader!(reader, input),
+            ReaderState::Ended => { (None, ReaderStatus::Ended) }
         };
 
         if let Some(state) = state {
@@ -113,26 +128,7 @@ impl<R: io::Read> Reader<Message, R> for MessageReader {
     }
 
     fn rewind(&mut self) {
-        self.state = MessageReaderState::Type;
-    }
-}
-
-impl ReadFrom for Message {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let msg_type = MessageType::read_from(source)?;
-
-        match msg_type {
-            MessageType::Ping => Ok(Message::Ping),
-            MessageType::Pong => Ok(Message::Pong),
-            MessageType::AddEntry => Ok(Message::AddEntry(AddEntry::read_from(source)?)),
-            MessageType::EntryAdded => Ok(Message::EntryAdded(EntryAdded::read_from(source)?)),
-            MessageType::RemoveEntry => Ok(Message::RemoveEntry(RemoveEntry::read_from(source)?)),
-            MessageType::EntryRemoved => Ok(Message::EntryRemoved),
-            MessageType::EntryExpired => Ok(Message::EntryExpired(EntryExpired::read_from(source)?)),
-            MessageType::SetWatchMode => Ok(Message::SetWatchMode(SetWatchMode::read_from(source)?)),
-            MessageType::Ok => Ok(Message::Ok),
-            MessageType::Error => Ok(Message::Error(ErrorMessage::read_from(source)?)),
-        }
+        self.state = ReaderState::Type;
     }
 }
 
@@ -158,7 +154,9 @@ impl WriteTo for Message {
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::{WatchMode, ErrorCode};
+    use super::super::{WatchMode, ErrorCode, ReaderStatus, Reader};
+    use super::super::messages::SetWatchMode;
+
 
     macro_rules! test_message {
         ($test:ident, $ty:ident) => {
@@ -174,9 +172,6 @@ mod test {
                 let mut vec = Vec::new();
                 assert!(msg.write_to(&mut vec).is_ok());
                 assert_eq!(msg.message_type().to_u8(), vec[0]);
-
-                let read_msg = Message::read_from(&mut vec.as_mut_slice().as_ref()).unwrap();
-                assert_eq!(msg.message_type(), read_msg.message_type());
             }
         };
     }

@@ -21,9 +21,9 @@ const UInt64 = (value) => {
   const buf = Buffer.alloc(8)
 
   buf.fill(0)
+  buf.writeUInt32BE(value, 4)
 
-  buf.writeUInt32BE(value >> 8, 0)
-  buf.writeUInt32BE(value & 0x00ff, 4)
+  console.log(buf)
 
   return buf
 }
@@ -101,7 +101,7 @@ radium.onConnected()
     console.log('Received', resp)
 
     if (enableWatchMode) {
-      return radium.action(new SetWatchMode(WatchMode.Tagged, process.argv[3]))
+      return radium.action(new SetWatchMode(WatchMode.Tagged, Number.parseInt(process.argv[3])))
     }
   })
   .then(() => {

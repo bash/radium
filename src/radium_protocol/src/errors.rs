@@ -7,6 +7,8 @@ pub enum TryFromError {
 }
 
 #[derive(Debug)]
+#[deprecated(note = "Use custom `io::Error`s instead")]
+#[doc(hidden)]
 pub enum ReadError {
     InvalidValue,
     UnexpectedEof,
@@ -15,6 +17,7 @@ pub enum ReadError {
 }
 
 #[derive(Debug)]
+#[deprecated(note = "Use custom `io::Error`s instead")]
 pub enum WriteError {
     IoError(io::Error),
     DataLengthOverflow
@@ -25,6 +28,12 @@ impl_err_display!(TryFromError);
 impl Error for TryFromError {
     fn description(&self) -> &str {
         "Invalid value"
+    }
+}
+
+impl From<TryFromError> for io::Error {
+    fn from(err: TryFromError) -> Self {
+        io::Error::new(io::ErrorKind::InvalidData, err)
     }
 }
 

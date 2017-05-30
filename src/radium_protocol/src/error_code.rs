@@ -4,7 +4,7 @@ use std::io;
 use super::errors::TryFromError;
 use super::{ReadResult, WriteResult, ReadFrom, WriteTo};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ErrorCode {
     /// The client was rejected because
     /// the worker was unable to handle more clients

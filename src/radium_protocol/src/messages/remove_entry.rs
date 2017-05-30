@@ -3,7 +3,7 @@ use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
 use super::super::{ReadFrom, WriteTo, ReadResult, WriteResult};
 
 /// ts: i64 | id: u16
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct RemoveEntry {
     timestamp: i64,
     id: u16,

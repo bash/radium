@@ -1,7 +1,7 @@
 use std::io;
 use std::convert::TryFrom;
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use super::{ReadFrom, WriteTo, ReadResult, WriteResult};
+use super::{ReadFrom, WriteTo, ReadResult, WriteResult, Reader, ReaderStatus};
 use super::errors::TryFromError;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -29,6 +29,8 @@ pub enum MessageType {
     Error,
 }
 
+pub struct MessageTypeReader;
+
 impl MessageType {
     /// Determines if the message is a command that is handled by the server
     pub fn is_command(self) -> bool {
@@ -44,6 +46,21 @@ impl MessageType {
     pub fn to_u8(self) -> u8 {
         self.into()
     }
+
+    pub fn reader() -> MessageTypeReader {
+        MessageTypeReader {}
+    }
+}
+
+impl Reader<MessageType> for MessageTypeReader {
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<MessageType>> where I: io::Read {
+        let value = input.read_u8()?;
+        let msg_type = MessageType::try_from(value)?;
+
+        Ok(ReaderStatus::Complete(msg_type))
+    }
+
+    fn rewind(&mut self) {}
 }
 
 impl ReadFrom for MessageType {

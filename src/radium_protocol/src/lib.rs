@@ -1,9 +1,15 @@
 #![feature(try_from)]
+// TODO: only temporary until old parsing is removed
+#![allow(deprecated)]
 
 extern crate byteorder;
 
 #[macro_use]
 mod macros;
+
+#[cfg(test)]
+#[macro_use]
+mod test_helpers;
 
 mod message;
 mod message_type;

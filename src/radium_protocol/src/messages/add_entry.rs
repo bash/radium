@@ -19,7 +19,7 @@ fn get_max_data_bytes() -> u64 {
 }
 
 /// ts: i64 | len: u16 | data: (len < 2**16)
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct AddEntry {
     timestamp: i64,
     tag: u64,
@@ -68,15 +68,15 @@ impl AddEntry {
     }
 }
 
-impl<R: io::Read> Reader<AddEntry, R> for AddEntryReader {
-    fn resume(&mut self, input: &mut R) -> io::Result<ReaderStatus<AddEntry>> {
+impl Reader<AddEntry> for AddEntryReader {
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<AddEntry>> where R: io::Read {
         let (state, status) = match self.state {
             AddEntryReaderState::Timestamp => {
                 let timestamp = input.read_i64::<NetworkEndian>()?;
 
                 (AddEntryReaderState::Tag(timestamp), ReaderStatus::Pending)
             },
-            _ => { panic!("") }
+            _ => { panic!("TODO: implement") }
         };
 
         self.state = state;

@@ -1,7 +1,7 @@
 use std::io;
 use super::super::{ReadFrom, WriteTo, ErrorCode, ReadResult, WriteResult};
 
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct ErrorMessage {
     code: ErrorCode
 }

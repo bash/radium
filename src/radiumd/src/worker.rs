@@ -6,7 +6,7 @@ use libradium::Frontend;
 use mio_channel::Receiver;
 use mio::{Poll, Token, Ready, PollOpt, Events, Event};
 use mio::unix::UnixReady;
-use radium_protocol::{Message, ReadValueExt, WriteValueExt, ErrorCode, ReaderStatus};
+use radium_protocol::{Message, WriteValueExt, ErrorCode};
 use radium_protocol::errors::{ReadError, WriteError};
 use radium_protocol::messages::{EntryExpired, ErrorMessage};
 
@@ -128,7 +128,7 @@ impl Worker {
             }
         }
 
-        if let Err(err) = self.handle_msg(token) {
+        if let Err(..) = self.handle_msg(token) {
             self.disconnect(token, Some(ErrorCode::ConnectionFailure)).unwrap();
         }
     }
