@@ -83,10 +83,6 @@ impl Reader<AddEntry> for AddEntryReader {
 
         Ok(status)
     }
-
-    fn rewind(&mut self) {
-        self.state = AddEntryReaderState::Timestamp;
-    }
 }
 
 impl ReadFrom for AddEntry {

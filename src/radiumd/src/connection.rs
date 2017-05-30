@@ -3,7 +3,7 @@ use std::net::Shutdown;
 use mio::{Evented, Poll, Token, Ready, PollOpt};
 use mio::tcp::TcpStream;
 use slab::{Slab, IterMut};
-use radium_protocol::{WatchMode, ReaderController, Reader, Message, MessageReader, ReaderStatus};
+use radium_protocol::{WatchMode, ReaderController, Message, MessageReader, ReaderStatus};
 pub use self::AddConnResult::{Added, Rejected};
 
 pub struct Connection {
@@ -44,12 +44,8 @@ impl Connection {
 
     pub fn read_message(&mut self) -> io::Result<Option<Message>> {
         match self.reader.resume(&mut self.sock)? {
-            ReaderStatus::Ended => { panic!("State should not exist") }
             ReaderStatus::Pending => { Ok(None) }
-            ReaderStatus::Complete(val) => {
-                self.reader.rewind();
-                Ok(Some(val))
-            }
+            ReaderStatus::Complete(val) => Ok(Some(val))
         }
     }
 }

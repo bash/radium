@@ -7,11 +7,10 @@ macro_rules! msg_reader {
     ($reader: expr, $input: expr) => {
         match $reader.resume($input)? {
             ReaderStatus::Pending => (None, ReaderStatus::Pending),
-            ReaderStatus::Ended => (Some(ReaderState::Ended), ReaderStatus::Ended),
             ReaderStatus::Complete(inner) => {
                 let msg = inner.wrap();
 
-                (Some(ReaderState::Ended), ReaderStatus::Complete(msg))
+                (Some(ReaderState::Type), ReaderStatus::Complete(msg))
             },
         }
     }
@@ -28,7 +27,7 @@ macro_rules! into_msg_reader {
 
 macro_rules! empty_msg {
     ($variant: ident) => {
-        (Some(ReaderState::Ended), ReaderStatus::Complete(Message::$variant))
+        (Some(ReaderState::Type), ReaderStatus::Complete(Message::$variant))
     }
 }
 
@@ -54,8 +53,7 @@ pub enum Message {
 enum ReaderState {
     Type,
     Message(MessageType),
-    SetWatchMode(SetWatchModeReader),
-    Ended
+    SetWatchMode(SetWatchModeReader)
 }
 
 #[derive(Debug)]
@@ -100,7 +98,6 @@ impl Reader<Message> for MessageReader {
             ReaderState::Type => {
                 let state = match MessageType::reader().resume(input)? {
                     ReaderStatus::Pending => None,
-                    ReaderStatus::Ended => None,
                     ReaderStatus::Complete(val) => Some(ReaderState::Message(val))
                 };
 
@@ -116,8 +113,7 @@ impl Reader<Message> for MessageReader {
                     _ => { panic!("not implemented") }
                 }
             },
-            ReaderState::SetWatchMode(ref mut reader) => msg_reader!(reader, input),
-            ReaderState::Ended => { (None, ReaderStatus::Ended) }
+            ReaderState::SetWatchMode(ref mut reader) => msg_reader!(reader, input)
         };
 
         if let Some(state) = state {
@@ -125,10 +121,6 @@ impl Reader<Message> for MessageReader {
         }
 
         Ok(status)
-    }
-
-    fn rewind(&mut self) {
-        self.state = ReaderState::Type;
     }
 }
 

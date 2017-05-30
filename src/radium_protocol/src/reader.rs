@@ -6,16 +6,13 @@ use super::errors::{ReadError, WriteError};
 #[derive(Debug, Eq, PartialEq)]
 pub enum ReaderStatus<T> {
     Pending,
-    Complete(T),
-    // TODO: should readers automatically rewind or do we need `Ended`?
-    Ended,
+    Complete(T)
 }
 
 impl<T> ReaderStatus<T> {
     pub fn map<F, R>(self, map_fn: F) -> ReaderStatus<R> where F: FnOnce(T) -> R {
         match self {
             ReaderStatus::Pending => ReaderStatus::Pending,
-            ReaderStatus::Ended => ReaderStatus::Ended,
             ReaderStatus::Complete(value) => ReaderStatus::Complete(map_fn(value))
         }
     }
@@ -44,8 +41,6 @@ pub struct ReaderController<T, R> where R: Reader<T> {
 pub trait Reader<T> {
     /// Resumes the reader with the given input
     fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<T>> where I: io::Read;
-    /// Rewinds the reader back to its first state
-    fn rewind(&mut self);
 }
 
 /// The [`ReaderController`] intentionally does not implement [`Reader<T>`]
@@ -63,18 +58,12 @@ impl<T, R> ReaderController<T, R> where R: Reader<T>  {
         match self.inner.resume(input) {
             Ok(val) => match val {
                 ReaderStatus::Complete(val) => Ok(ReaderStatus::Complete(val)),
-                ReaderStatus::Pending => self.resume(input),
-                ReaderStatus::Ended => Ok(ReaderStatus::Ended)
+                ReaderStatus::Pending => self.resume(input)
             },
             Err(err) => match err.kind() {
                 ErrorKind::WouldBlock => Ok(ReaderStatus::Pending),
                 _ => Err(err)
             },
         }
-    }
-
-    /// Rewinds the inner reader back to its first state
-    pub fn rewind(&mut self) {
-        self.inner.rewind();
     }
 }

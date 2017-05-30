@@ -18,8 +18,7 @@ pub enum WatchMode {
 #[derive(Debug)]
 enum WatchModeReaderState {
     Mode,
-    Tag,
-    Ended,
+    Tag
 }
 
 #[derive(Debug)]
@@ -48,29 +47,22 @@ impl Reader<WatchMode> for WatchModeReader {
                 let mode = input.read_u8()?;
 
                 match mode {
-                    0 => (WatchModeReaderState::Ended, ReaderStatus::Complete(WatchMode::None)),
-                    1 => (WatchModeReaderState::Ended, ReaderStatus::Complete(WatchMode::All)),
+                    0 => (WatchModeReaderState::Mode, ReaderStatus::Complete(WatchMode::None)),
+                    1 => (WatchModeReaderState::Mode, ReaderStatus::Complete(WatchMode::All)),
                     2 => (WatchModeReaderState::Tag, ReaderStatus::Pending),
                     _ => { return Err(InvalidValueError::new()) }
                 }
-            }
+            },
             WatchModeReaderState::Tag => {
                 let tag = input.read_u64::<NetworkEndian>()?;
 
-                (WatchModeReaderState::Ended, ReaderStatus::Complete(WatchMode::Tagged(tag)))
-            }
-            WatchModeReaderState::Ended => {
-                (WatchModeReaderState::Ended, ReaderStatus::Ended)
-            }
+                (WatchModeReaderState::Mode, ReaderStatus::Complete(WatchMode::Tagged(tag)))
+            },
         };
 
         self.state = state;
 
         Ok(status)
-    }
-
-    fn rewind(&mut self) {
-        self.state = WatchModeReaderState::Mode;
     }
 }
 
