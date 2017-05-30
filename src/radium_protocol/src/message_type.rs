@@ -118,32 +118,72 @@ impl TryFrom<u8> for MessageType {
 #[cfg(test)]
 mod test {
     use super::*;
+    use super::super::ReaderStatus;
 
     macro_rules! test_message_type {
-        ($test:ident, $msg:expr, $value:expr, $command:expr) => {
-            #[test]
-            fn $test() {
-                let mut buf = vec![];
-                assert!($msg.write_to(&mut buf).is_ok());
-                assert_eq!(vec![$value], buf);
+        ($msg:expr, $value:expr, $command:expr) => {{
+            let mut buf = vec![];
+            assert!($msg.write_to(&mut buf).is_ok());
+            assert_eq!(vec![$value], buf);
 
-                assert_eq!($value as u8, $msg.into());
-                assert_eq!($msg, MessageType::try_from($value as u8).unwrap());
-                assert_eq!($command, $msg.is_command());
+            assert_eq!($value as u8, $msg.into());
+            assert_eq!($msg, MessageType::try_from($value as u8).unwrap());
+            assert_eq!($command, $msg.is_command());
 
-                assert_eq!($msg, MessageType::read_from(&mut [$value as u8].as_ref()).unwrap());
-            }
-        }
+            let mut reader = MessageType::reader();
+            let input = &mut ::std::io::Cursor::new(vec![$value]);
+
+            assert_eq!(ReaderStatus::Complete($msg), reader.resume(input).unwrap());
+        }};
     }
 
-    test_message_type!(test_ping, MessageType::Ping, 0, true);
-    test_message_type!(test_pong, MessageType::Pong, 1, false);
-    test_message_type!(test_add_entry, MessageType::AddEntry, 2, true);
-    test_message_type!(test_entry_added, MessageType::EntryAdded, 3, false);
-    test_message_type!(test_remove_entry, MessageType::RemoveEntry, 4, true);
-    test_message_type!(test_entry_removed, MessageType::EntryRemoved, 5, false);
-    test_message_type!(test_entry_expired, MessageType::EntryExpired, 6, false);
-    test_message_type!(test_set_watch_mode, MessageType::SetWatchMode, 7, true);
-    test_message_type!(test_ok, MessageType::Ok, 8, false);
-    test_message_type!(test_error, MessageType::Error, 9, false);
+    #[test]
+    fn test_ping() {
+        test_message_type!(MessageType::Ping, 0, true);
+    }
+
+    #[test]
+    fn test_pong() {
+        test_message_type!(MessageType::Pong, 1, false);
+    }
+
+    #[test]
+    fn test_add_entry() {
+        test_message_type!(MessageType::AddEntry, 2, true);
+    }
+
+    #[test]
+    fn test_entry_added() {
+        test_message_type!(MessageType::EntryAdded, 3, false);
+    }
+
+    #[test]
+    fn test_remove_entry() {
+        test_message_type!(MessageType::RemoveEntry, 4, true);
+    }
+
+    #[test]
+    fn test_entry_removed() {
+        test_message_type!(MessageType::EntryRemoved, 5, false);
+    }
+
+    #[test]
+    fn test_entry_expired() {
+        test_message_type!(MessageType::EntryExpired, 6, false);
+    }
+
+    #[test]
+    fn test_set_watch_mode() {
+        test_message_type!(MessageType::SetWatchMode, 7, true);
+    }
+
+    #[test]
+    fn test_ok() {
+        test_message_type!(MessageType::Ok, 8, false);
+    }
+
+    #[test]
+    fn test_error() {
+        test_message_type!(MessageType::Error, 9, false);
+    }
 }

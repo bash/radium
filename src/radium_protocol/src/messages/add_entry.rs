@@ -143,17 +143,18 @@ impl WriteTo for AddEntry {
 mod test {
     use super::*;
     use std::error::Error;
+    use std::io::Cursor;
     use super::super::super::{Message, MessageType};
     use super::super::super::errors::DataLengthError;
 
     #[test]
     fn test_reader() {
-        let mut input = vec![
+        let input = vec![
             /* type */ MessageType::AddEntry.into(),
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* tag  */ 0, 0, 0, 0, 0, 0, 0, 42,
             /* len  */ 0, 3,
-            /* data */ 1, 2, 3,
+            /* data */ 1, 2, 3
         ];
 
         test_reader! {
@@ -170,7 +171,7 @@ mod test {
 
     #[test]
     fn test_read_respects_size() {
-        let mut input: Vec<u8> = vec![
+        let input = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* tag  */ 0, 0, 0, 0, 0, 0, 255, 255,
             /* len  */ 0, 3,
@@ -189,21 +190,21 @@ mod test {
 
     #[test]
     fn test_fails_on_data_eof() {
-        let slice = [
+        let vec = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* tag */  0, 0, 0, 0, 0, 0, 0, 123,
             /* len  */ 0, 10,
             /* data */ 1, 2, 3
         ];
 
-        let mut input = &mut slice.as_ref();
+        let input = &mut Cursor::new(vec);
         let mut reader = AddEntry::reader();
 
         assert_eq!(ReaderStatus::Pending, reader.resume(input).unwrap());
         assert_eq!(ReaderStatus::Pending, reader.resume(input).unwrap());
         assert_eq!(ReaderStatus::Pending, reader.resume(input).unwrap());
 
-        let result = reader.resume(&mut input);
+        let result = reader.resume(input);
 
         assert_eq!(DataLengthError::new().description(), result.err().unwrap().description());
     }

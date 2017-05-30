@@ -56,11 +56,11 @@ mod test {
     use super::super::super::{MessageType, WatchMode};
 
     #[test]
-    fn test_reader_with_tagged () {
-        let mut input = vec![
+    fn test_reader_with_tagged() {
+        let input = vec![
             /* type          */ MessageType::SetWatchMode.into(),
             /* mode = tagged */ 2,
-            /* tag           */ 0, 0, 0, 0, 0, 0, 255, 255,
+            /* tag           */ 0, 0, 0, 0, 0, 0, 255, 255
         ];
 
         test_reader! {
@@ -74,10 +74,10 @@ mod test {
     }
 
     #[test]
-    fn test_reader () {
-        let mut input = vec![
+    fn test_reader() {
+        let input = vec![
             /* type        */ MessageType::SetWatchMode.into(),
-            /* mode = all  */ 1,
+            /* mode = all  */ 1
         ];
 
         test_reader! {
