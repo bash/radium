@@ -2,6 +2,9 @@ use std::error::Error;
 use std::io;
 
 #[derive(Debug)]
+pub struct InvalidValueError;
+
+#[derive(Debug)]
 pub enum TryFromError {
     InvalidValue,
 }
@@ -21,6 +24,20 @@ pub enum ReadError {
 pub enum WriteError {
     IoError(io::Error),
     DataLengthOverflow
+}
+
+impl_err_display!(InvalidValueError);
+
+impl InvalidValueError {
+    pub fn new() -> io::Error {
+        io::Error::new(io::ErrorKind::InvalidData, InvalidValueError {})
+    }
+}
+
+impl Error for InvalidValueError {
+    fn description(&self) -> &str {
+        "Invalid value"
+    }
 }
 
 impl_err_display!(TryFromError);

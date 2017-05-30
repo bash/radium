@@ -1,7 +1,7 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
 use std::io;
-use super::errors::ReadError;
-use super::{ReadFrom, WriteTo, ReadResult, WriteResult, Reader, ReaderStatus};
+use super::errors::InvalidValueError;
+use super::{WriteTo, WriteResult, Reader, ReaderStatus};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 /// The `WatchMode` indicates whether the client wants to be notified about
@@ -51,7 +51,7 @@ impl Reader<WatchMode> for WatchModeReader {
                     0 => (WatchModeReaderState::Ended, ReaderStatus::Complete(WatchMode::None)),
                     1 => (WatchModeReaderState::Ended, ReaderStatus::Complete(WatchMode::All)),
                     2 => (WatchModeReaderState::Tag, ReaderStatus::Pending),
-                    _ => { panic!("TODO: catch invalid values {}", mode) }
+                    _ => { return Err(InvalidValueError::new()) }
                 }
             }
             WatchModeReaderState::Tag => {
@@ -71,23 +71,6 @@ impl Reader<WatchMode> for WatchModeReader {
 
     fn rewind(&mut self) {
         self.state = WatchModeReaderState::Mode;
-    }
-}
-
-impl ReadFrom for WatchMode {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let mode = source.read_u8()?;
-
-        match mode {
-            0 => { Ok(WatchMode::None) }
-            1 => { Ok(WatchMode::All) }
-            2 => {
-                let tag = source.read_u64::<NetworkEndian>()?;
-
-                Ok(WatchMode::Tagged(tag))
-            }
-            _ => { Err(ReadError::InvalidValue) }
-        }
     }
 }
 
@@ -120,7 +103,6 @@ mod test {
                 let mut buf = vec![];
                 assert!($mode.write_to(&mut buf).is_ok());
                 assert_eq!($raw, &mut buf.as_ref());
-                assert_eq!($mode, WatchMode::read_from(&mut $raw.as_ref()).unwrap());
             }
         }
     }

@@ -1,5 +1,5 @@
 use std::io;
-use super::super::{ReadFrom, WriteTo, WatchMode, WatchModeReader, ReadResult, WriteResult, Reader, ReaderStatus, MessageInner, Message};
+use super::super::{WriteTo, WatchMode, WatchModeReader, WriteResult, Reader, ReaderStatus, MessageInner, Message};
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct SetWatchMode {
@@ -36,24 +36,11 @@ impl Reader<SetWatchMode> for SetWatchModeReader {
     fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<SetWatchMode>> where R: io::Read {
         let status = self.inner.resume(input)?;
 
-        match status {
-            ReaderStatus::Complete(mode) => Ok(ReaderStatus::Complete(SetWatchMode::new(mode))),
-            ReaderStatus::Pending => Ok(ReaderStatus::Pending),
-            ReaderStatus::Ended => Ok(ReaderStatus::Ended),
-        }
+        Ok(status.map(|mode| SetWatchMode::new(mode)))
     }
 
     fn rewind(&mut self) {
         self.inner.rewind()
-    }
-}
-
-
-impl ReadFrom for SetWatchMode {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let mode = WatchMode::read_from(source)?;
-
-        Ok(SetWatchMode::new(mode))
     }
 }
 

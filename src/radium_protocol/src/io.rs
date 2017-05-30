@@ -52,6 +52,16 @@ pub enum ReaderStatus<T> {
     Ended,
 }
 
+impl<T> ReaderStatus<T> {
+    pub fn map<F, R>(self, map_fn: F) -> ReaderStatus<R> where F: FnOnce(T) -> R {
+        match self {
+            ReaderStatus::Pending => ReaderStatus::Pending,
+            ReaderStatus::Ended => ReaderStatus::Ended,
+            ReaderStatus::Complete(value) => ReaderStatus::Complete(map_fn(value))
+        }
+    }
+}
+
 /// A `ReaderController` wraps a [`Reader`] and offers some additional functionality.
 ///
 /// The `resume` method of the inner [`Reader`] is called until either it becomes no longer pending
