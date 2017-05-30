@@ -5,6 +5,9 @@ use std::io;
 pub struct InvalidValueError;
 
 #[derive(Debug)]
+pub struct DataLengthError;
+
+#[derive(Debug)]
 pub enum TryFromError {
     InvalidValue,
 }
@@ -39,6 +42,21 @@ impl Error for InvalidValueError {
         "Invalid value"
     }
 }
+
+impl_err_display!(DataLengthError);
+
+impl DataLengthError {
+    pub fn new() -> io::Error {
+        io::Error::new(io::ErrorKind::InvalidData, DataLengthError {})
+    }
+}
+
+impl Error for DataLengthError {
+    fn description(&self) -> &str {
+        "Data length does not match or overflows maximum"
+    }
+}
+
 
 impl_err_display!(TryFromError);
 

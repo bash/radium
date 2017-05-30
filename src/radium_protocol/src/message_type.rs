@@ -59,6 +59,8 @@ impl Reader<MessageType> for MessageTypeReader {
 
         Ok(ReaderStatus::Complete(msg_type))
     }
+
+    fn rewind(&mut self) {}
 }
 
 impl ReadFrom for MessageType {

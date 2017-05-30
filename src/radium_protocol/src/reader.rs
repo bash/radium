@@ -41,6 +41,9 @@ pub struct ReaderController<T, R> where R: Reader<T> {
 pub trait Reader<T> {
     /// Resumes the reader with the given input
     fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<T>> where I: io::Read;
+
+    /// Rewinds the reader to its initial state
+    fn rewind(&mut self);
 }
 
 /// The [`ReaderController`] intentionally does not implement [`Reader<T>`]
@@ -62,7 +65,10 @@ impl<T, R> ReaderController<T, R> where R: Reader<T>  {
             },
             Err(err) => match err.kind() {
                 ErrorKind::WouldBlock => Ok(ReaderStatus::Pending),
-                _ => Err(err)
+                _ => {
+                    self.inner.rewind();
+                    Err(err)
+                }
             },
         }
     }

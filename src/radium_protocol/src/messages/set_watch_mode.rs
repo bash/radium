@@ -38,6 +38,10 @@ impl Reader<SetWatchMode> for SetWatchModeReader {
 
         Ok(status.map(|mode| SetWatchMode::new(mode)))
     }
+
+    fn rewind(&mut self) {
+        self.inner.rewind();
+    }
 }
 
 impl WriteTo for SetWatchMode {

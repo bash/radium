@@ -122,6 +122,10 @@ impl Reader<Message> for MessageReader {
 
         Ok(status)
     }
+
+    fn rewind(&mut self) {
+        self.state = ReaderState::Type;
+    }
 }
 
 impl WriteTo for Message {

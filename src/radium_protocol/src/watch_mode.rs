@@ -64,6 +64,10 @@ impl Reader<WatchMode> for WatchModeReader {
 
         Ok(status)
     }
+
+    fn rewind(&mut self) {
+        self.state = WatchModeReaderState::Mode;
+    }
 }
 
 impl WriteTo for WatchMode {

@@ -3,7 +3,9 @@ use std::io;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
 use super::super::{ReadFrom, WriteTo, ReadResult, WriteResult, ReaderStatus, Reader};
-use super::super::errors::{ReadError, WriteError};
+use super::super::errors::{ReadError, WriteError, DataLengthError};
+
+use ReaderStatus::{Complete, Pending};
 
 /// default value for maximum bytes of data (2KiB)
 const MAX_DATA_BYTES: u64 = 2048;
@@ -26,16 +28,15 @@ pub struct AddEntry {
     data: Vec<u8>,
 }
 
-enum AddEntryReaderState {
+enum ReaderState {
     Timestamp,
     Tag(i64),
     Length(i64, u64),
-    Data(i64, u64, u16),
-    Complete(i64, u64, u16, Vec<u8>),
+    Data(i64, u64, u64),
 }
 
 struct AddEntryReader {
-    state: AddEntryReaderState,
+    state: ReaderState,
 }
 
 impl AddEntry {
@@ -64,24 +65,51 @@ impl AddEntry {
     }
 
     fn reader() -> AddEntryReader {
-        AddEntryReader { state: AddEntryReaderState::Timestamp }
+        AddEntryReader { state: ReaderState::Timestamp }
     }
 }
 
 impl Reader<AddEntry> for AddEntryReader {
     fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<AddEntry>> where R: io::Read {
         let (state, status) = match self.state {
-            AddEntryReaderState::Timestamp => {
+            ReaderState::Timestamp => {
                 let timestamp = input.read_i64::<NetworkEndian>()?;
 
-                (AddEntryReaderState::Tag(timestamp), ReaderStatus::Pending)
+                (ReaderState::Tag(timestamp), Pending)
             },
-            _ => { panic!("TODO: implement") }
+            ReaderState::Tag(timestamp) => {
+                let tag = input.read_u64::<NetworkEndian>()?;
+
+                (ReaderState::Length(timestamp, tag), Pending)
+            },
+            ReaderState::Length(timestamp, tag) => {
+                let length = input.read_u16::<NetworkEndian>()? as u64;
+
+                if length > get_max_data_bytes() {
+                    return Err(DataLengthError::new());
+                }
+
+                (ReaderState::Data(timestamp, tag, length), Pending)
+            },
+            ReaderState::Data(timestamp, tag, length) => {
+                let mut buf = Vec::new();
+                let bytes_read = input.take(length).read_to_end(&mut buf)?;
+
+                if (bytes_read as u64) < length {
+                    return Err(DataLengthError::new());
+                }
+
+                (ReaderState::Timestamp, Complete(AddEntry::new(timestamp, tag, buf)))
+            },
         };
 
         self.state = state;
 
         Ok(status)
+    }
+
+    fn rewind (&mut self) {
+        self.state = ReaderState::Timestamp;
     }
 }
 
