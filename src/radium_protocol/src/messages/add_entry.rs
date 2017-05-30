@@ -2,8 +2,8 @@ use std::env;
 use std::io;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{ReadFrom, WriteTo, ReadResult, WriteResult, ReaderStatus, Reader, MessageInner, Message};
-use super::super::errors::{ReadError, WriteError, DataLengthError};
+use super::super::{WriteTo, WriteResult, ReaderStatus, Reader, MessageInner, Message};
+use super::super::errors::{WriteError, DataLengthError};
 
 use ReaderStatus::{Complete, Pending};
 
@@ -66,7 +66,7 @@ impl AddEntry {
         self.data
     }
 
-    fn reader() -> AddEntryReader {
+    pub fn reader() -> AddEntryReader {
         AddEntryReader { state: ReaderState::Timestamp }
     }
 }
@@ -121,27 +121,6 @@ impl Reader<AddEntry> for AddEntryReader {
     }
 }
 
-impl ReadFrom for AddEntry {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let timestamp = source.read_i64::<NetworkEndian>()?;
-        let tag = source.read_u64::<NetworkEndian>()?;
-        let length = source.read_u16::<NetworkEndian>()? as u64;
-
-        if length > get_max_data_bytes() {
-            return Err(ReadError::LimitReached);
-        }
-
-        let mut buf = Vec::new();
-        let bytes_read = source.take(length).read_to_end(&mut buf)?;
-
-        if (bytes_read as u64) < length {
-            return Err(ReadError::UnexpectedEof);
-        }
-
-        Ok(AddEntry::new(timestamp, tag, buf))
-    }
-}
-
 impl WriteTo for AddEntry {
     fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
         let len = self.data.len();
@@ -162,55 +141,71 @@ impl WriteTo for AddEntry {
 
 #[cfg(test)]
 mod test {
-    use std::error::Error;
     use super::*;
+    use std::error::Error;
+    use super::super::super::{Message, MessageType};
+    use super::super::super::errors::DataLengthError;
 
     #[test]
-    fn test_read() {
-        let mut source: Vec<u8> = vec![
+    fn test_reader() {
+        let mut input = vec![
+            /* type */ MessageType::AddEntry.into(),
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* tag  */ 0, 0, 0, 0, 0, 0, 0, 42,
             /* len  */ 0, 3,
-            /* data */ 1, 2, 3
+            /* data */ 1, 2, 3,
         ];
 
-        let msg = AddEntry::read_from(&mut source.as_mut_slice().as_ref()).unwrap();
-
-        assert_eq!(10, msg.timestamp());
-        assert_eq!(42, msg.tag());
-        assert_eq!(&[1, 2, 3], msg.data());
-        assert_eq!(3, msg.data().len());
+        test_reader! {
+            Message::reader(),
+            input,
+            ReaderStatus::Pending,
+            ReaderStatus::Pending,
+            ReaderStatus::Pending,
+            ReaderStatus::Pending,
+            ReaderStatus::Pending,
+            ReaderStatus::Complete(Message::AddEntry(AddEntry::new(10, 42, vec![1, 2, 3])))
+        };
     }
 
     #[test]
     fn test_read_respects_size() {
-        let mut source: Vec<u8> = vec![
+        let mut input: Vec<u8> = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* tag  */ 0, 0, 0, 0, 0, 0, 255, 255,
             /* len  */ 0, 3,
             /* data */ 1, 2, 3, 4
         ];
 
-        let msg = AddEntry::read_from(&mut source.as_mut_slice().as_ref()).unwrap();
-
-        assert_eq!(10, msg.timestamp());
-        assert_eq!(65535, msg.tag());
-        assert_eq!(&[1, 2, 3], msg.data());
-        assert_eq!(3, msg.data().len());
+        test_reader! {
+            AddEntry::reader(),
+            input,
+            ReaderStatus::Pending,
+            ReaderStatus::Pending,
+            ReaderStatus::Pending,
+            ReaderStatus::Complete(AddEntry::new(10, 65535, vec![1, 2, 3]))
+        };
     }
 
     #[test]
     fn test_fails_on_data_eof() {
-        let mut source: Vec<u8> = vec![
+        let slice = [
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* tag */  0, 0, 0, 0, 0, 0, 0, 123,
             /* len  */ 0, 10,
             /* data */ 1, 2, 3
         ];
 
-        let result = AddEntry::read_from(&mut source.as_mut_slice().as_ref());
+        let mut input = &mut slice.as_ref();
+        let mut reader = AddEntry::reader();
 
-        assert_eq!(ReadError::UnexpectedEof.description(), result.err().unwrap().description());
+        assert_eq!(ReaderStatus::Pending, reader.resume(input).unwrap());
+        assert_eq!(ReaderStatus::Pending, reader.resume(input).unwrap());
+        assert_eq!(ReaderStatus::Pending, reader.resume(input).unwrap());
+
+        let result = reader.resume(&mut input);
+
+        assert_eq!(DataLengthError::new().description(), result.err().unwrap().description());
     }
 
     #[test]

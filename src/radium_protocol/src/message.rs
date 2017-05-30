@@ -153,9 +153,8 @@ impl WriteTo for Message {
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::{WatchMode, ErrorCode, ReaderStatus, Reader};
+    use super::super::{WatchMode, ErrorCode};
     use super::super::messages::SetWatchMode;
-
 
     macro_rules! test_message {
         ($test:ident, $ty:ident) => {
