@@ -13,7 +13,11 @@ mod test_helpers;
 
 mod message;
 mod message_type;
+
+#[deprecated(note = "Use new Reader/Writer api instead")]
 mod io;
+
+mod reader;
 mod watch_mode;
 mod error_code;
 
@@ -23,5 +27,6 @@ pub mod errors;
 pub use self::message_type::*;
 pub use self::message::*;
 pub use self::io::*;
+pub use self::reader::*;
 pub use self::watch_mode::*;
 pub use self::error_code::*;
