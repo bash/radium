@@ -143,7 +143,6 @@ impl WriteTo for AddEntry {
 mod test {
     use super::*;
     use std::error::Error;
-    use std::io::Cursor;
     use super::super::super::{Message, MessageType};
     use super::super::super::errors::DataLengthError;
 
@@ -157,16 +156,10 @@ mod test {
             /* data */ 1, 2, 3
         ];
 
-        test_reader! {
-            Message::reader(),
-            input,
-            ReaderStatus::Pending,
-            ReaderStatus::Pending,
-            ReaderStatus::Pending,
-            ReaderStatus::Pending,
-            ReaderStatus::Pending,
-            ReaderStatus::Complete(Message::AddEntry(AddEntry::new(10, 42, vec![1, 2, 3])))
-        };
+        let result = test_reader2!(Message::reader(), input);
+
+        assert!(result.is_ok());
+        assert_eq!(Message::AddEntry(AddEntry::new(10, 42, vec![1, 2, 3])), result.unwrap());
     }
 
     #[test]
@@ -178,35 +171,24 @@ mod test {
             /* data */ 1, 2, 3, 4
         ];
 
-        test_reader! {
-            AddEntry::reader(),
-            input,
-            ReaderStatus::Pending,
-            ReaderStatus::Pending,
-            ReaderStatus::Pending,
-            ReaderStatus::Complete(AddEntry::new(10, 65535, vec![1, 2, 3]))
-        };
+        let result = test_reader2!(AddEntry::reader(), input);
+
+        assert!(result.is_ok());
+        assert_eq!(AddEntry::new(10, 65535, vec![1, 2, 3]), result.unwrap());
     }
 
     #[test]
     fn test_fails_on_data_eof() {
-        let vec = vec![
+        let input = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* tag */  0, 0, 0, 0, 0, 0, 0, 123,
             /* len  */ 0, 10,
             /* data */ 1, 2, 3
         ];
 
-        let input = &mut Cursor::new(vec);
-        let mut reader = AddEntry::reader();
+        let result = test_reader2!(AddEntry::reader(), input);
 
-        assert_eq!(ReaderStatus::Pending, reader.resume(input).unwrap());
-        assert_eq!(ReaderStatus::Pending, reader.resume(input).unwrap());
-        assert_eq!(ReaderStatus::Pending, reader.resume(input).unwrap());
-
-        let result = reader.resume(input);
-
-        assert_eq!(DataLengthError::new().description(), result.err().unwrap().description());
+        assert_eq!(DataLengthError::new().description(), result.unwrap_err().description());
     }
 
     #[test]

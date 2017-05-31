@@ -12,3 +12,16 @@ macro_rules! test_reader {
         }
     };
 }
+
+#[macro_export]
+macro_rules! test_reader2 {
+    ($reader: expr, $input: expr) => {
+        {
+            let mut buf = io::Cursor::new($input);
+            let mut ctrl = $crate::SyncReaderController::new($reader);
+
+            ctrl.resume(&mut buf)
+        }
+    }
+}
+

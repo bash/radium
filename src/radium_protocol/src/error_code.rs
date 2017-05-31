@@ -2,7 +2,7 @@ use byteorder::{WriteBytesExt, ReadBytesExt};
 use std::convert::TryFrom;
 use std::io;
 use super::errors::TryFromError;
-use super::{ReadResult, WriteResult, ReadFrom, WriteTo};
+use super::{ReadResult, WriteResult, ReadFrom, WriteTo, Reader, ReaderStatus};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ErrorCode {
@@ -18,6 +18,14 @@ pub enum ErrorCode {
     /// This message is sent when the connection is somehow broken
     /// e.g. reads and/or writes fail
     ConnectionFailure,
+}
+
+pub struct ErrorCodeReader;
+
+impl ErrorCode {
+    pub fn reader() -> ErrorCodeReader {
+        ErrorCodeReader {}
+    }
 }
 
 impl Into<u8> for ErrorCode {
@@ -62,7 +70,27 @@ impl WriteTo for ErrorCode {
     }
 }
 
+impl Reader<ErrorCode> for ErrorCodeReader {
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<ErrorCode>> where I: io::Read {
+        let value = input.read_u8()?;
+        let code = ErrorCode::try_from(value)?;
+
+        Ok(ReaderStatus::Complete(code))
+    }
+
+    fn rewind(&mut self) {}
+}
+
 #[cfg(test)]
 mod test {
+    use super::*;
 
+    #[test]
+    pub fn test_reader () {
+        let vec = vec![0];
+        let result = test_reader2!(ErrorCode::reader(), vec);
+
+        assert!(result.is_ok());
+        assert_eq!(ErrorCode::ClientRejected, result.unwrap());
+    }
 }
