@@ -1,7 +1,14 @@
 use std::io;
 use byteorder::WriteBytesExt;
 use super::{MessageType, WriteTo, WriteResult, ReaderStatus, Reader};
-use super::messages::{AddEntry, EntryAdded, EntryExpired, RemoveEntry, SetWatchMode, ErrorMessage, SetWatchModeReader, AddEntryReader};
+use super::messages::{
+    AddEntry, AddEntryReader,
+    EntryAdded, EntryAddedReader,
+    SetWatchMode, SetWatchModeReader,
+    ErrorMessage, ErrorMessageReader,
+    EntryExpired,
+    RemoveEntry,
+};
 
 macro_rules! msg_reader {
     ($reader: expr, $input: expr) => {
@@ -54,7 +61,9 @@ enum ReaderState {
     Type,
     Message(MessageType),
     SetWatchMode(SetWatchModeReader),
-    AddEntry(AddEntryReader)
+    ErrorMessage(ErrorMessageReader),
+    AddEntry(AddEntryReader),
+    EntryAdded(EntryAddedReader)
 }
 
 #[derive(Debug)]
@@ -105,6 +114,7 @@ impl Reader<Message> for MessageReader {
                 (state, ReaderStatus::Pending)
             },
             ReaderState::Message(msg_type) => {
+                #[allow(unreachable_patterns)]
                 match msg_type {
                     MessageType::Ping => empty_msg!(Ping),
                     MessageType::Pong => empty_msg!(Pong),
@@ -112,11 +122,17 @@ impl Reader<Message> for MessageReader {
                     MessageType::Ok => empty_msg!(Ok),
                     MessageType::SetWatchMode => into_msg_reader!(SetWatchMode),
                     MessageType::AddEntry => into_msg_reader!(AddEntry),
-                    _ => { panic!("not implemented") }
+                    MessageType::Error => into_msg_reader!(ErrorMessage),
+                    MessageType::EntryAdded => into_msg_reader!(EntryAdded),
+                    // TODO: implement EntryRemoved
+                    MessageType::EntryRemoved => unreachable!(),
+                    _ => panic!("TODO"),
                 }
             },
             ReaderState::SetWatchMode(ref mut reader) => msg_reader!(reader, input),
             ReaderState::AddEntry(ref mut reader) => msg_reader!(reader, input),
+            ReaderState::ErrorMessage(ref mut reader) => msg_reader!(reader, input),
+            ReaderState::EntryAdded(ref mut reader) => msg_reader!(reader, input),
         };
 
         if let Some(state) = state {

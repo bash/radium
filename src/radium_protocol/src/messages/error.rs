@@ -6,6 +6,7 @@ pub struct ErrorMessage {
     code: ErrorCode,
 }
 
+#[derive(Debug)]
 pub struct ErrorMessageReader;
 
 impl ErrorMessage {
