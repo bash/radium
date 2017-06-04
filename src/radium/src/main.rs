@@ -1,8 +1,9 @@
 extern crate radium_protocol;
 
 use std::net::TcpStream;
-use radium_protocol::{Message, Reader, WriteValueExt, SyncReaderController, WatchMode};
+use radium_protocol::{Message, WriteValueExt, WatchMode};
 use radium_protocol::messages::{AddEntry, SetWatchMode};
+use radium_protocol::reader::{Reader, SyncReaderController, HasReader};
 use std::env;
 use std::io;
 use std::io::Write;
