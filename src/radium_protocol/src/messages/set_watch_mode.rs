@@ -57,39 +57,30 @@ impl WriteTo for SetWatchMode {
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::super::{MessageType, WatchMode};
+    use super::super::super::WatchMode;
 
     #[test]
     fn test_reader_with_tagged() {
         let input = vec![
-            /* type          */ MessageType::SetWatchMode.into(),
             /* mode = tagged */ 2,
             /* tag           */ 0, 0, 0, 0, 0, 0, 255, 255
         ];
 
-        test_reader! {
-            Message::reader(),
-            input,
-            ReaderStatus::Pending,
-            ReaderStatus::Pending,
-            ReaderStatus::Pending,
-            ReaderStatus::Complete(Message::SetWatchMode(SetWatchMode::new(WatchMode::Tagged(65535))))
-        };
+        let result = test_reader2!(SetWatchMode::reader(), input);
+
+        assert!(result.is_ok());
+        assert_eq!(SetWatchMode::new(WatchMode::Tagged(65535)), result.unwrap());
     }
 
     #[test]
     fn test_reader() {
         let input = vec![
-            /* type        */ MessageType::SetWatchMode.into(),
-            /* mode = all  */ 1
+            /* mode = all */ 1
         ];
 
-        test_reader! {
-            Message::reader(),
-            input,
-            ReaderStatus::Pending,
-            ReaderStatus::Pending,
-            ReaderStatus::Complete(Message::SetWatchMode(SetWatchMode::new(WatchMode::All)))
-        };
+        let result = test_reader2!(SetWatchMode::reader(), input);
+
+        assert!(result.is_ok());
+        assert_eq!(SetWatchMode::new(WatchMode::All), result.unwrap());
     }
 }
