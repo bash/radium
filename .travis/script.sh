@@ -6,8 +6,8 @@ fold_start () {
   if [ ! -z "${TRAVIS}" ]; then
     echo -en "travis_fold:start:${1}"
   else
-    tput setaf 4
-    echo "=> ${1}"
+    tput setaf 8
+    echo "[${1}]"
     tput sgr0
   fi
 }
@@ -30,21 +30,21 @@ do
         FEATURES="--all-features"
     fi
 
-    fold_start "Running rustfmt for ${DIR}"
-    # cargo fmt -- --write-mode=diff || true
-    fold_end "Running rustfmt for ${DIR}"
+    fold_start "${DIR}.rustfmt"
+    cargo fmt -- --write-mode=diff || true
+    fold_end "${DIR}.rustfmt"
 
-    fold_start "Building ${DIR}"
+    fold_start "${DIR}.build"
     cargo build
-    fold_end "Building ${DIR}"
+    fold_end "${DIR}.build"
 
     if [ "${DIR}" = "libradium" ]; then
-        fold_start "Building ${DIR} example"
+        fold_start "${DIR}.example"
         cargo build ${FEATURES} --example main
-        fold_end "Building ${DIR} example"
+        fold_end "${DIR}.example"
     fi
 
-    fold_start "Testing ${DIR}"
+    fold_start "${DIR}.test"
     cargo test ${FEATURES}
-    fold_end "Testing ${DIR}"
+    fold_end "${DIR}.test"
 done
