@@ -1,8 +1,8 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
 use std::io;
 use super::errors::InvalidValueError;
-use super::{WriteTo, WriteResult};
 use super::reader::{Reader, ReaderStatus, HasReader};
+use super::writer::{Writer, WriterStatus, HasWriter};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 /// The `WatchMode` indicates whether the client wants to be notified about
@@ -13,18 +13,30 @@ pub enum WatchMode {
     /// The client will receive notifications for all tags
     All,
     /// The client will receive notifications only for one tag
-    Tagged(u64)
+    Tagged(u64),
 }
 
 #[derive(Debug)]
 enum WatchModeReaderState {
     Mode,
-    Tag
+    Tag,
+}
+
+#[derive(Debug)]
+enum WriterState {
+    Mode,
+    Tag,
 }
 
 #[derive(Debug)]
 pub struct WatchModeReader {
     state: WatchModeReaderState
+}
+
+#[derive(Debug)]
+pub struct WatchModeWriter {
+    state: WriterState,
+    value: WatchMode,
 }
 
 impl WatchMode {
@@ -42,6 +54,20 @@ impl HasReader for WatchMode {
 
     fn reader() -> Self::Reader {
         WatchModeReader { state: WatchModeReaderState::Mode }
+    }
+}
+
+impl HasWriter for WatchMode {
+    type Writer = WatchModeWriter;
+
+    fn writer(self) -> Self::Writer {
+        WatchModeWriter { state: WriterState::initial(), value: self }
+    }
+}
+
+impl WriterState {
+    pub fn initial() -> Self {
+        WriterState::Mode
     }
 }
 
@@ -75,21 +101,36 @@ impl Reader<WatchMode> for WatchModeReader {
     }
 }
 
-impl WriteTo for WatchMode {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
-        let mode = match self {
-            &WatchMode::None => 0,
-            &WatchMode::All => 1,
-            &WatchMode::Tagged(..) => 2,
+impl Writer for WatchModeWriter {
+    fn resume<O>(&mut self, output: &mut O) -> io::Result<WriterStatus> where O: io::Write {
+        let (state, status) = match self.state {
+            WriterState::Mode => {
+                let (next, status, mode) = match self.value {
+                    WatchMode::None => (WriterState::initial(), WriterStatus::Complete, 0),
+                    WatchMode::All => (WriterState::initial(), WriterStatus::Complete, 1),
+                    WatchMode::Tagged(..) => (WriterState::Tag, WriterStatus::Pending, 2),
+                };
+
+                output.write_u8(mode)?;
+
+                (next, status)
+            }
+            WriterState::Tag => {
+                if let WatchMode::Tagged(tag) = self.value {
+                    output.write_u64::<NetworkEndian>(tag)?;
+                }
+
+                (WriterState::initial(), WriterStatus::Complete)
+            }
         };
 
-        target.write_u8(mode)?;
+        self.state = state;
 
-        if let &WatchMode::Tagged(tag) = self {
-            target.write_u64::<NetworkEndian>(tag)?;
-        }
+        Ok(status)
+    }
 
-        Ok(())
+    fn rewind(&mut self) {
+        self.state = WriterState::initial();
     }
 }
 
@@ -98,17 +139,35 @@ mod test {
     use super::*;
 
     macro_rules! test_watch_mode {
-        ($test:ident, $mode:expr, $raw:expr) => {
-            #[test]
-            fn $test() {
-                let mut buf = vec![];
-                assert!($mode.write_to(&mut buf).is_ok());
-                assert_eq!($raw, &mut buf.as_ref());
+        ($mode:expr, $raw:expr) => {
+            {
+                let result = test_reader!(WatchMode::reader(), $raw);
+
+                assert!(result.is_ok());
+                assert_eq!($mode, result.unwrap());
+            }
+
+            {
+                let (buf, result) = test_writer!($mode.writer(), $raw);
+
+                assert!(result.is_ok());
+                assert_eq!($raw, buf);
             }
         }
     }
 
-    test_watch_mode!(test_none, WatchMode::None, &mut [0]);
-    test_watch_mode!(test_all, WatchMode::All, &mut [1]);
-    test_watch_mode!(test_tagged, WatchMode::Tagged(42), &mut [2, 0, 0, 0, 0, 0, 0, 0, 42]);
+    #[test]
+    fn test_none() {
+        test_watch_mode!(WatchMode::None, vec![0]);
+    }
+
+    #[test]
+    fn test_all() {
+        test_watch_mode!(WatchMode::All, vec![1]);
+    }
+
+    #[test]
+    fn test_tagged() {
+        test_watch_mode!(WatchMode::Tagged(42), vec![2, 0, 0, 0, 0, 0, 0, 0, 42]);
+    }
 }

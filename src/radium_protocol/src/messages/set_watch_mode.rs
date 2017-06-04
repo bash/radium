@@ -49,8 +49,9 @@ impl Reader<SetWatchMode> for SetWatchModeReader {
 }
 
 impl WriteTo for SetWatchMode {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
-        self.mode.write_to(target)
+    fn write_to<W: io::Write>(&self, _: &mut W) -> WriteResult {
+        Ok(())
+        // self.mode.write_to(target)
     }
 }
 
