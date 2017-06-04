@@ -3,13 +3,17 @@ use std::net::Shutdown;
 use mio::{Evented, Poll, Token, Ready, PollOpt};
 use mio::tcp::TcpStream;
 use slab::{Slab, IterMut};
-use radium_protocol::{WatchMode, ReaderController, Message, MessageReader, ReaderStatus};
+use std::collections::VecDeque;
+use radium_protocol::{WatchMode, ReaderController, Message, MessageReader, ReaderStatus, WriteValueExt};
+use radium_protocol::errors::WriteError;
 pub use self::AddConnResult::{Added, Rejected};
 
+#[derive(Debug)]
 pub struct Connection {
     sock: TcpStream,
     watch_mode: WatchMode,
-    reader: ReaderController<Message, MessageReader>
+    reader: ReaderController<Message, MessageReader>,
+    write_queue: VecDeque<Message>,
 }
 
 pub enum AddConnResult<'a> {
@@ -26,7 +30,8 @@ impl Connection {
         Connection {
             sock,
             watch_mode: WatchMode::None,
-            reader: ReaderController::new(Message::reader())
+            reader: ReaderController::new(Message::reader()),
+            write_queue: VecDeque::new(),
         }
     }
 
@@ -47,6 +52,29 @@ impl Connection {
             ReaderStatus::Pending => { Ok(None) }
             ReaderStatus::Complete(val) => Ok(Some(val))
         }
+    }
+
+    pub fn write_message(&mut self, msg: Message) -> io::Result<()> {
+        let result = self.sock.write_value(&msg);
+
+        if let Err(WriteError::IoError(ref err)) = result {
+            if err.kind() == io::ErrorKind::WouldBlock {
+                self.write_queue.push_back(msg);
+            }
+        }
+
+        result?;
+        Ok(())
+    }
+
+    pub fn resume_write(&mut self, ready: Ready) -> io::Result<()> {
+        if ready.is_writable() {
+            if let Some(msg) = self.write_queue.pop_front() {
+                self.sock.write_value(&msg)?;
+            }
+        }
+
+        Ok(())
     }
 }
 

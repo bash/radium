@@ -14,12 +14,12 @@ pub struct Server {
     events: Events,
     poll: Poll,
     tcp: TcpListener,
-    receiver: Receiver<Entry>,
+    receiver: Receiver<Vec<Entry>>,
     pool: Pool,
 }
 
 impl Server {
-    pub fn new(tcp: TcpListener, receiver: Receiver<Entry>, pool: Pool) -> io::Result<Self> {
+    pub fn new(tcp: TcpListener, receiver: Receiver<Vec<Entry>>, pool: Pool) -> io::Result<Self> {
         let poll = Poll::new()?;
 
         poll.register(&tcp, SERVER, Ready::readable(), PollOpt::edge())?;

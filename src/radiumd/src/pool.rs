@@ -50,7 +50,7 @@ impl Pool {
         Ok(())
     }
 
-    pub fn push_expired(&self, entry: Entry) -> Result<(), SendError<WorkerMessage>> {
+    pub fn push_expired(&self, entry: Vec<Entry>) -> Result<(), SendError<WorkerMessage>> {
         for worker in &self.workers {
             // TODO: we probably shouldn't clone the entry for every thread
             worker.send(WorkerMessage::Push(entry.clone()))?;

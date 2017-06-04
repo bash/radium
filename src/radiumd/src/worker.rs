@@ -17,16 +17,17 @@ use super::entry::{Entry, EntryData};
 pub const MESSAGE_TOKEN: Token = Token(10_000_000);
 pub const DEFAULT_WORKER_CONNECTIONS: usize = 128;
 
+#[derive(Debug)]
 pub enum WorkerMessage {
     Connection(Connection),
-    Push(Entry)
+    Push(Vec<Entry>),
 }
 
 #[derive(Debug)]
 pub enum WorkerError {
     ReadError(ReadError),
     WriteError(WriteError),
-    IoError(io::Error)
+    IoError(io::Error),
 }
 
 type WorkerResult<T> = Result<T, WorkerError>;
@@ -113,24 +114,39 @@ impl Worker {
         let ready = event.readiness();
         let unix_ready = UnixReady::from(ready);
 
-        if unix_ready.is_hup() || unix_ready.is_error() {
-            println!("Disconnecting because ready {:?}", unix_ready);
-            self.disconnect(token, None).unwrap();
-            return;
-        }
-
         if token == MESSAGE_TOKEN {
             let msg = self.receiver.try_recv().unwrap();
 
             return match msg {
                 WorkerMessage::Connection(conn) => { self.accept(conn) }
-                WorkerMessage::Push(entry) => { self.push(entry) }
+                WorkerMessage::Push(entries) => { self.push(entries) }
             }
         }
 
-        if let Err(..) = self.handle_msg(token) {
-            self.disconnect(token, Some(ErrorCode::ConnectionFailure)).unwrap();
+        if unix_ready.is_hup() || unix_ready.is_error() {
+            self.disconnect(token, None).unwrap();
+            return;
         }
+
+        if ready.is_writable() {
+            if let Err(..) = self.resume_write(token, ready) {
+                self.disconnect(token, Some(ErrorCode::ConnectionFailure)).unwrap();
+            }
+        }
+
+        if ready.is_readable() {
+            if let Err(..) = self.handle_msg(token) {
+                self.disconnect(token, Some(ErrorCode::ConnectionFailure)).unwrap();
+            }
+        }
+    }
+
+    fn resume_write(&mut self, token: Token, ready: Ready) -> io::Result<()> {
+        if let Some(conn) = self.connections.get_conn_mut(token) {
+            conn.resume_write(ready)?;
+        }
+
+        Ok(())
     }
 
     fn handle_msg(&mut self, token: Token) -> WorkerResult<()> {
@@ -151,36 +167,42 @@ impl Worker {
 
             debug!("worker {}, conn {} | {:?} -> {:?}", self.id, token.0, msg_type, resp.message_type());
 
-            conn.write_value(&resp)?;
+            conn.write_message(resp)?;
         }
 
         Ok(())
     }
 
     fn accept(&mut self, conn: Connection) {
-        let result = match self.connections.add_conn(conn) {
+        match self.connections.add_conn(conn) {
             Added(conn_ref, token) => {
-                self.poll.register(conn_ref, token, Ready::readable(), PollOpt::edge())
+                // TODO: I have no clue what could possibly go wrong here
+                self.poll
+                    .register(conn_ref, token, Ready::readable() | Ready::writable(), PollOpt::edge())
+                    .unwrap();
             }
-            Rejected(conn) => { conn.close() }
+            Rejected(conn) => {
+                // TODO: is this safe? (we should not unwrap, because it might panic when we close an already closed connection)
+                let _ = conn.close();
+            }
         };
-
-        // TODO: idk what to do with this result
-        result.unwrap();
     }
 
-    fn push(&mut self, entry: Entry) {
-        let id = entry.id();
-        let tag = entry.data().tag();
-        let inner = EntryExpired::new(id.timestamp(), id.id(), tag, entry.consume_data().consume_data());
-        let msg = Message::EntryExpired(inner);
+    fn push(&mut self, entries: Vec<Entry>) {
+        for entry in entries {
+            let id = entry.id();
+            let tag = entry.data().tag();
+            let inner = EntryExpired::new(id.timestamp(), id.id(), tag, entry.consume_data().consume_data());
+            let msg = Message::EntryExpired(inner);
 
-        let conns = self.connections
-            .iter_mut()
-            .filter(|conn| conn.watch_mode().matches_tag(tag));
+            let conns = self.connections
+                .iter_mut()
+                .filter(|conn| conn.watch_mode().matches_tag(tag));
 
-        for conn in conns {
-            let _ = conn.write_value(&msg);
+            for conn in conns {
+                // TODO: I don't want to clone messages but it's easier than a ref inside Connection
+                let _ = conn.write_message(msg.clone());
+            }
         }
     }
 
@@ -196,6 +218,8 @@ impl Worker {
                 if let Some(code) = code {
                     let _ = conn.write_value(&ErrorMessage::new(code));
                 }
+
+                let _ = conn.close();
 
                 Ok(())
             }

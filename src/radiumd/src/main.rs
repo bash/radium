@@ -18,7 +18,7 @@ mod entry;
 mod worker;
 
 use getopts::Options;
-use libradium::{Frontend, Listener, Timestamp};
+use libradium::{Frontend, Listener};
 use logger::Logger;
 use mio_channel::{channel, Sender};
 use mio::tcp::TcpListener;
@@ -30,11 +30,11 @@ use self::server::Server;
 use self::entry::{Entry, EntryData};
 
 struct EntryListener {
-    sender: Sender<Entry>
+    sender: Sender<Vec<Entry>>
 }
 
 impl Listener<EntryData> for EntryListener {
-    fn on_expired(&self, entry: Entry) {
+    fn on_expired(&self, entry: Vec<Entry>) {
         self.sender.send(entry).unwrap();
     }
 }
@@ -74,14 +74,7 @@ fn main() {
 
     Logger::init().unwrap();
 
-    frontend
-        .add_entry(Entry::gen(Timestamp::now() + 10, EntryData::new(12, vec![1, 2, 3])))
-        .unwrap();
-
-    frontend
-        .add_entry(Entry::gen(Timestamp::now() + 13, EntryData::new(14, vec![20, 30, 40, 7])))
-        .unwrap();
-
+    // TODO: use cores instead of hardcoded value
     let pool = Pool::build(frontend, 4);
     let mut server: Server = Server::new(tcp, receiver, pool).unwrap();
 
