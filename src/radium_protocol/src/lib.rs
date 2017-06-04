@@ -23,6 +23,7 @@ mod error_code;
 pub mod messages;
 pub mod errors;
 pub mod reader;
+pub mod writer;
 
 pub use self::message_type::*;
 pub use self::message::*;
