@@ -1,7 +1,7 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
 use std::io;
 use super::errors::InvalidValueError;
-use super::{WriteTo, WriteResult, Reader, ReaderStatus};
+use super::{WriteTo, WriteResult, Reader, ReaderStatus, HasReader};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 /// The `WatchMode` indicates whether the client wants to be notified about
@@ -34,8 +34,12 @@ impl WatchMode {
             &WatchMode::Tagged(val) => val == tag,
         }
     }
+}
 
-    pub fn reader() -> WatchModeReader {
+impl HasReader for WatchMode {
+    type Reader = WatchModeReader;
+
+    fn reader() -> Self::Reader {
         WatchModeReader { state: WatchModeReaderState::Mode }
     }
 }

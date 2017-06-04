@@ -24,7 +24,6 @@ enum ReaderState {
 }
 
 impl ReaderState {
-    #[inline]
     fn initial() -> ReaderState {
         ReaderState::Timestamp
     }

@@ -1,5 +1,5 @@
 use std::io;
-use super::super::{WriteTo, WatchMode, WatchModeReader, WriteResult, Reader, ReaderStatus, MessageInner, Message};
+use super::super::{WriteTo, WatchMode, WatchModeReader, WriteResult, Reader, ReaderStatus, MessageInner, Message, HasReader};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct SetWatchMode {
@@ -19,16 +19,19 @@ impl SetWatchMode {
     pub fn mode(&self) -> WatchMode {
         self.mode
     }
-
-    pub fn reader() -> SetWatchModeReader {
-        SetWatchModeReader { inner: WatchMode::reader() }
-    }
 }
 
 impl MessageInner for SetWatchMode {
-    #[inline]
     fn wrap(self) -> Message {
         Message::SetWatchMode(self)
+    }
+}
+
+impl HasReader for SetWatchMode {
+    type Reader = SetWatchModeReader;
+
+    fn reader() -> Self::Reader {
+        SetWatchModeReader { inner: WatchMode::reader() }
     }
 }
 

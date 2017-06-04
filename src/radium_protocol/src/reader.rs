@@ -8,7 +8,6 @@ pub enum ReaderStatus<T> {
     Complete(T)
 }
 
-// TODO: implement HasReader for all Messages, ErrorCode, ...
 pub trait HasReader: Sized {
     type Reader: Reader<Self>;
 

@@ -74,7 +74,9 @@ pub struct MessageReader {
 }
 
 pub trait MessageInner {
-    /// Wraps the inner message inside its corresponding `Message` variant
+    /// Wraps the inner message inside its corresponding [`Message`] variant.
+    ///
+    /// [`Message`]: ./enum.Message.html
     fn wrap(self) -> Message;
 }
 
@@ -98,8 +100,12 @@ impl Message {
     pub fn is_command(&self) -> bool {
         self.message_type().is_command()
     }
+}
 
-    pub fn reader() -> MessageReader {
+impl HasReader for Message {
+    type Reader = MessageReader;
+
+    fn reader() -> Self::Reader {
         MessageReader { state: ReaderState::Type }
     }
 }

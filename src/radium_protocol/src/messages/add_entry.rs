@@ -2,7 +2,7 @@ use std::env;
 use std::io;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{WriteTo, WriteResult, ReaderStatus, Reader, MessageInner, Message};
+use super::super::{WriteTo, WriteResult, ReaderStatus, Reader, MessageInner, Message, HasReader};
 use super::super::errors::{WriteError, DataLengthError};
 
 use ReaderStatus::{Complete, Pending};
@@ -65,15 +65,19 @@ impl AddEntry {
     pub fn consume_data(self) -> Vec<u8> {
         self.data
     }
-
-    pub fn reader() -> AddEntryReader {
-        AddEntryReader { state: ReaderState::Timestamp }
-    }
 }
 
 impl MessageInner for AddEntry {
     fn wrap(self) -> Message {
         Message::AddEntry(self)
+    }
+}
+
+impl HasReader for AddEntry {
+    type Reader = AddEntryReader;
+
+    fn reader() -> Self::Reader {
+        AddEntryReader { state: ReaderState::Timestamp }
     }
 }
 

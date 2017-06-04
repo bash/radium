@@ -1,5 +1,5 @@
 use std::io;
-use super::super::{ReadFrom, WriteTo, ErrorCode, ReadResult, WriteResult, Reader, ReaderStatus, MessageInner, Message};
+use super::super::{ReadFrom, WriteTo, ErrorCode, ReadResult, WriteResult, Reader, ReaderStatus, MessageInner, Message, HasReader};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ErrorMessage {
@@ -14,10 +14,6 @@ impl ErrorMessage {
         ErrorMessage { code }
     }
 
-    pub fn reader() -> ErrorMessageReader {
-        ErrorMessageReader {}
-    }
-
     pub fn code(&self) -> ErrorCode {
         self.code
     }
@@ -26,6 +22,14 @@ impl ErrorMessage {
 impl MessageInner for ErrorMessage {
     fn wrap(self) -> Message {
         Message::Error(self)
+    }
+}
+
+impl HasReader for ErrorMessage {
+    type Reader = ErrorMessageReader;
+
+    fn reader() -> Self::Reader {
+        ErrorMessageReader {}
     }
 }
 

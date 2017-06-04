@@ -1,7 +1,7 @@
 use std::io;
 use std::convert::TryFrom;
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use super::{ReadFrom, WriteTo, ReadResult, WriteResult, Reader, ReaderStatus};
+use super::{ReadFrom, WriteTo, ReadResult, WriteResult, Reader, ReaderStatus, HasReader};
 use super::errors::TryFromError;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -46,8 +46,12 @@ impl MessageType {
     pub fn to_u8(self) -> u8 {
         self.into()
     }
+}
 
-    pub fn reader() -> MessageTypeReader {
+impl HasReader for MessageType {
+    type Reader = MessageTypeReader;
+
+    fn reader() -> Self::Reader {
         MessageTypeReader {}
     }
 }

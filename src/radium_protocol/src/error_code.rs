@@ -2,7 +2,7 @@ use byteorder::{WriteBytesExt, ReadBytesExt};
 use std::convert::TryFrom;
 use std::io;
 use super::errors::TryFromError;
-use super::{ReadResult, WriteResult, ReadFrom, WriteTo, Reader, ReaderStatus};
+use super::{ReadResult, WriteResult, ReadFrom, WriteTo, Reader, ReaderStatus, HasReader};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ErrorCode {
@@ -22,8 +22,10 @@ pub enum ErrorCode {
 
 pub struct ErrorCodeReader;
 
-impl ErrorCode {
-    pub fn reader() -> ErrorCodeReader {
+impl HasReader for ErrorCode {
+    type Reader = ErrorCodeReader;
+
+    fn reader() -> ErrorCodeReader {
         ErrorCodeReader {}
     }
 }
@@ -86,7 +88,7 @@ mod test {
     use super::*;
 
     #[test]
-    pub fn test_reader () {
+    pub fn test_reader() {
         let vec = vec![0];
         let result = test_reader2!(ErrorCode::reader(), vec);
 

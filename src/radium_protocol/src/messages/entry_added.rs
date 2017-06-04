@@ -1,6 +1,6 @@
 use std::io;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{WriteTo, WriteResult, Reader, ReaderStatus, MessageInner, Message};
+use super::super::{WriteTo, WriteResult, Reader, ReaderStatus, MessageInner, Message, HasReader};
 use ReaderStatus::{Pending, Complete};
 
 /// ts: i64 | id: u16
@@ -26,10 +26,6 @@ impl EntryAdded {
         EntryAdded { timestamp, id }
     }
 
-    pub fn reader() -> EntryAddedReader {
-        EntryAddedReader { state: ReaderState::Timestamp }
-    }
-
     pub fn timestamp(&self) -> i64 {
         self.timestamp
     }
@@ -42,6 +38,14 @@ impl EntryAdded {
 impl MessageInner for EntryAdded {
     fn wrap(self) -> Message {
         Message::EntryAdded(self)
+    }
+}
+
+impl HasReader for EntryAdded {
+    type Reader = EntryAddedReader;
+
+    fn reader() -> Self::Reader {
+        EntryAddedReader { state: ReaderState::Timestamp }
     }
 }
 
