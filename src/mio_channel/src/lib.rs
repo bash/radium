@@ -201,7 +201,7 @@ impl SenderCtl {
         if 0 == cnt {
             // Toggle readiness to readable
             if let Some(set_readiness) = self.inner.set_readiness.borrow() {
-                try!(set_readiness.set_readiness(Ready::readable()));
+                set_readiness.set_readiness(Ready::readable())?;
             }
         }
 
