@@ -8,6 +8,13 @@ pub enum ReaderStatus<T> {
     Complete(T)
 }
 
+// TODO: implement HasReader for all Messages, ErrorCode, ...
+pub trait HasReader: Sized {
+    type Reader: Reader<Self>;
+
+    fn reader() -> Self::Reader;
+}
+
 /// tl;dr - A `ReaderController` is used with non-blocking I/O.
 ///
 /// A `ReaderController` wraps a [`Reader`] and offers some additional functionality.

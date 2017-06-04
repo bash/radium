@@ -20,8 +20,8 @@ fn get_max_data_bytes() -> u64 {
     }
 }
 
-/// ts: i64 | len: u16 | data: (len < 2**16)
-#[derive(Debug, Eq, PartialEq)]
+/// ts: i64 | tag: u64 | len: u16 | data: (len < 2**16)
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct AddEntry {
     timestamp: i64,
     tag: u64,

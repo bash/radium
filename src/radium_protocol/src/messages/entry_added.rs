@@ -4,7 +4,7 @@ use super::super::{WriteTo, WriteResult, Reader, ReaderStatus, MessageInner, Mes
 use ReaderStatus::{Pending, Complete};
 
 /// ts: i64 | id: u16
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct EntryAdded {
     timestamp: i64,
     id: u16,

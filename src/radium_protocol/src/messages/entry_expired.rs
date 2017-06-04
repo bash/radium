@@ -1,16 +1,38 @@
 use std::io;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{ReadFrom, WriteTo, ReadResult, WriteResult};
-use super::super::errors::{ReadError, WriteError};
+use super::super::{WriteTo, WriteResult, Reader, ReaderStatus, Message, MessageInner, HasReader};
+use super::super::errors::{WriteError, DataLengthError};
+use ReaderStatus::{Pending, Complete};
 
-/// ts: i64 | id: u16 | len: u16 | data: (len < 2**16)
-#[derive(Debug, Eq, PartialEq)]
+/// ts: i64 | id: u16 | tag: u64 | len: u16 | data: (len < 2**16)
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct EntryExpired {
     timestamp: i64,
     id: u16,
     tag: u64,
     data: Vec<u8>,
+}
+
+#[derive(Debug)]
+enum ReaderState {
+    Timestamp,
+    Id(i64),
+    Tag(i64, u16),
+    Length(i64, u16, u64),
+    Data(i64, u16, u64, u64),
+}
+
+impl ReaderState {
+    #[inline]
+    fn initial() -> ReaderState {
+        ReaderState::Timestamp
+    }
+}
+
+#[derive(Debug)]
+pub struct EntryExpiredReader {
+    state: ReaderState,
 }
 
 impl EntryExpired {
@@ -40,21 +62,17 @@ impl EntryExpired {
     }
 }
 
-impl ReadFrom for EntryExpired {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let timestamp = source.read_i64::<NetworkEndian>()?;
-        let id = source.read_u16::<NetworkEndian>()?;
-        let tag = source.read_u64::<NetworkEndian>()?;
-        let length = source.read_u16::<NetworkEndian>()? as u64;
+impl MessageInner for EntryExpired {
+    fn wrap(self) -> Message {
+        Message::EntryExpired(self)
+    }
+}
 
-        let mut buf = Vec::new();
-        let bytes_read = source.take(length).read_to_end(&mut buf)?;
+impl HasReader for EntryExpired {
+    type Reader = EntryExpiredReader;
 
-        if (bytes_read as u64) < length {
-            return Err(ReadError::UnexpectedEof);
-        }
-
-        Ok(EntryExpired::new(timestamp, id, tag, buf))
+    fn reader() -> Self::Reader {
+        EntryExpiredReader { state: ReaderState::initial() }
     }
 }
 
@@ -77,6 +95,51 @@ impl WriteTo for EntryExpired {
     }
 }
 
+impl Reader<EntryExpired> for EntryExpiredReader {
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<EntryExpired>> where I: io::Read {
+        let (state, status) = match self.state {
+            ReaderState::Timestamp => {
+                let timestamp = input.read_i64::<NetworkEndian>()?;
+
+                (ReaderState::Id(timestamp), Pending)
+            }
+            ReaderState::Id(timestamp) => {
+                let id = input.read_u16::<NetworkEndian>()?;
+
+                (ReaderState::Tag(timestamp, id), Pending)
+            }
+            ReaderState::Tag(timestamp, id) => {
+                let tag = input.read_u64::<NetworkEndian>()?;
+
+                (ReaderState::Length(timestamp, id, tag), Pending)
+            }
+            ReaderState::Length(timestamp, id, tag) => {
+                let length = input.read_u16::<NetworkEndian>()?;
+
+                (ReaderState::Data(timestamp, id, tag, length as u64), Pending)
+            }
+            ReaderState::Data(timestamp, id, tag, length) => {
+                let mut buf = Vec::new();
+                let bytes_read = input.take(length).read_to_end(&mut buf)?;
+
+                if (bytes_read as u64) < length {
+                    return Err(DataLengthError::new());
+                }
+
+                (ReaderState::initial(), Complete(EntryExpired::new(timestamp, id, tag, buf)))
+            }
+        };
+
+        self.state = state;
+
+        Ok(status)
+    }
+
+    fn rewind(&mut self) {
+        self.state = ReaderState::initial();
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::error::Error;
@@ -84,7 +147,7 @@ mod test {
 
     #[test]
     fn test_read() {
-        let mut source: Vec<u8> = vec![
+        let input = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* id   */ 0, 7,
             /* tag  */ 0, 0, 0, 0, 0, 0, 0, 42,
@@ -92,18 +155,15 @@ mod test {
             /* data */ 1, 2, 3,
         ];
 
-        let msg = EntryExpired::read_from(&mut source.as_mut_slice().as_ref()).unwrap();
+        let result = test_reader2!(EntryExpired::reader(), input);
 
-        assert_eq!(10, msg.timestamp());
-        assert_eq!(7, msg.id());
-        assert_eq!(42, msg.tag());
-        assert_eq!(&[1, 2, 3], msg.data());
-        assert_eq!(3, msg.data().len());
+        assert!(result.is_ok());
+        assert_eq!(EntryExpired::new(10, 7, 42, vec![1, 2, 3]), result.unwrap());
     }
 
     #[test]
     fn test_read_respects_size() {
-        let mut source: Vec<u8> = vec![
+        let input = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* id   */ 0, 7,
             /* tag  */ 0, 0, 0, 0, 0, 0, 0, 32,
@@ -111,18 +171,15 @@ mod test {
             /* data */ 1, 2, 3, 4,
         ];
 
-        let msg = EntryExpired::read_from(&mut source.as_mut_slice().as_ref()).unwrap();
+        let result = test_reader2!(EntryExpired::reader(), input);
 
-        assert_eq!(10, msg.timestamp());
-        assert_eq!(7, msg.id());
-        assert_eq!(32, msg.tag());
-        assert_eq!(&[1, 2, 3], msg.data());
-        assert_eq!(3, msg.data().len());
+        assert!(result.is_ok());
+        assert_eq!(EntryExpired::new(10, 7, 32, vec![1, 2, 3]), result.unwrap());
     }
 
     #[test]
     fn test_fails_on_data_eof() {
-        let mut source: Vec<u8> = vec![
+        let input = vec![
             /* ts   */ 0, 0, 0, 0, 0, 0, 0, 10,
             /* id   */ 0, 7,
             /* tag  */ 0, 0, 0, 0, 0, 0, 0, 42,
@@ -130,9 +187,10 @@ mod test {
             /* data */ 1, 2, 3,
         ];
 
-        let result = EntryExpired::read_from(&mut source.as_mut_slice().as_ref());
+        let result = test_reader2!(EntryExpired::reader(), input);
 
-        assert_eq!(ReadError::UnexpectedEof.description(), result.err().unwrap().description());
+        assert!(result.is_err());
+        assert_eq!(DataLengthError::new().description(), result.unwrap_err().description());
     }
 
     #[test]

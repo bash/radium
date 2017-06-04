@@ -1,17 +1,33 @@
 use std::io;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{ReadFrom, WriteTo, ReadResult, WriteResult};
+use super::super::{WriteTo, WriteResult, Reader, ReaderStatus, Message, MessageInner};
+use ReaderStatus::{Pending, Complete};
 
 /// ts: i64 | id: u16
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct RemoveEntry {
     timestamp: i64,
     id: u16,
 }
 
+#[derive(Debug)]
+enum ReaderState {
+    Timestamp,
+    Id(i64),
+}
+
+#[derive(Debug)]
+pub struct RemoveEntryReader {
+    state: ReaderState,
+}
+
 impl RemoveEntry {
     pub fn new(timestamp: i64, id: u16) -> Self {
         RemoveEntry { timestamp, id }
+    }
+
+    pub fn reader() -> RemoveEntryReader {
+        RemoveEntryReader { state: ReaderState::Timestamp }
     }
 
     pub fn timestamp(&self) -> i64 {
@@ -23,12 +39,34 @@ impl RemoveEntry {
     }
 }
 
-impl ReadFrom for RemoveEntry {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let timestamp = source.read_i64::<NetworkEndian>()?;
-        let id = source.read_u16::<NetworkEndian>()?;
+impl MessageInner for RemoveEntry {
+    fn wrap(self) -> Message {
+        Message::RemoveEntry(self)
+    }
+}
 
-        Ok(RemoveEntry::new(timestamp, id))
+impl Reader<RemoveEntry> for RemoveEntryReader {
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<RemoveEntry>> where I: io::Read {
+        let (state, status) = match self.state {
+            ReaderState::Timestamp => {
+                let timestamp = input.read_i64::<NetworkEndian>()?;
+
+                (ReaderState::Id(timestamp), Pending)
+            }
+            ReaderState::Id(timestamp) => {
+                let id = input.read_u16::<NetworkEndian>()?;
+
+                (ReaderState::Timestamp, Complete(RemoveEntry::new(timestamp, id)))
+            }
+        };
+
+        self.state = state;
+
+        Ok(status)
+    }
+
+    fn rewind(&mut self) {
+        self.state = ReaderState::Timestamp;
     }
 }
 
@@ -65,15 +103,15 @@ mod test {
     }
 
     #[test]
-    fn test_read() {
-        let mut vec: Vec<u8> = vec![
+    fn test_reader() {
+        let input = vec![
             /* ts  */ 0, 0, 0, 0, 0, 0, 48, 57,
             /* id  */ 0, 23,
         ];
 
-        let msg = RemoveEntry::read_from(&mut vec.as_mut_slice().as_ref()).unwrap();
+        let result = test_reader2!(RemoveEntry::reader(), input);
 
-        assert_eq!(12345, msg.timestamp());
-        assert_eq!(23, msg.id());
+        assert!(result.is_ok());
+        assert_eq!(RemoveEntry::new(12345, 23), result.unwrap());
     }
 }

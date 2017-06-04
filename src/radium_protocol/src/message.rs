@@ -1,13 +1,13 @@
 use std::io;
 use byteorder::WriteBytesExt;
-use super::{MessageType, WriteTo, WriteResult, ReaderStatus, Reader};
+use super::{MessageType, WriteTo, WriteResult, ReaderStatus, Reader, HasReader};
 use super::messages::{
     AddEntry, AddEntryReader,
     EntryAdded, EntryAddedReader,
     SetWatchMode, SetWatchModeReader,
     ErrorMessage, ErrorMessageReader,
-    EntryExpired,
-    RemoveEntry,
+    EntryExpired, EntryExpiredReader,
+    RemoveEntry, RemoveEntryReader,
 };
 
 macro_rules! msg_reader {
@@ -38,7 +38,7 @@ macro_rules! empty_msg {
     }
 }
 
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub enum Message {
     Ping,
     Pong,
@@ -63,7 +63,9 @@ enum ReaderState {
     SetWatchMode(SetWatchModeReader),
     ErrorMessage(ErrorMessageReader),
     AddEntry(AddEntryReader),
-    EntryAdded(EntryAddedReader)
+    EntryAdded(EntryAddedReader),
+    RemoveEntry(RemoveEntryReader),
+    EntryExpired(EntryExpiredReader),
 }
 
 #[derive(Debug)]
@@ -106,8 +108,9 @@ impl Reader<Message> for MessageReader {
     fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Message>> where R: io::Read {
         let (state, status) = match self.state {
             ReaderState::Type => {
+                #[allow(unreachable_patterns)]
                 let state = match MessageType::reader().resume(input)? {
-                    ReaderStatus::Pending => None,
+                    ReaderStatus::Pending => unreachable!(),
                     ReaderStatus::Complete(val) => Some(ReaderState::Message(val))
                 };
 
@@ -124,15 +127,18 @@ impl Reader<Message> for MessageReader {
                     MessageType::AddEntry => into_msg_reader!(AddEntry),
                     MessageType::Error => into_msg_reader!(ErrorMessage),
                     MessageType::EntryAdded => into_msg_reader!(EntryAdded),
+                    MessageType::RemoveEntry => into_msg_reader!(RemoveEntry),
                     // TODO: implement EntryRemoved
                     MessageType::EntryRemoved => unreachable!(),
-                    _ => panic!("TODO"),
+                    MessageType::EntryExpired => into_msg_reader!(EntryExpired),
                 }
             },
             ReaderState::SetWatchMode(ref mut reader) => msg_reader!(reader, input),
             ReaderState::AddEntry(ref mut reader) => msg_reader!(reader, input),
             ReaderState::ErrorMessage(ref mut reader) => msg_reader!(reader, input),
             ReaderState::EntryAdded(ref mut reader) => msg_reader!(reader, input),
+            ReaderState::RemoveEntry(ref mut reader) => msg_reader!(reader, input),
+            ReaderState::EntryExpired(ref mut reader) => msg_reader!(reader, input),
         };
 
         if let Some(state) = state {
