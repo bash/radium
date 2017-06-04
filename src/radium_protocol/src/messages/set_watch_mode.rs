@@ -1,5 +1,6 @@
 use std::io;
-use super::super::{WriteTo, WatchMode, WatchModeReader, WriteResult, Reader, ReaderStatus, MessageInner, Message, HasReader};
+use super::super::{WriteTo, WatchMode, WatchModeReader, WriteResult, MessageInner, Message};
+use super::super::reader::{Reader, ReaderStatus, HasReader};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct SetWatchMode {

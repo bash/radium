@@ -2,7 +2,8 @@ use byteorder::{WriteBytesExt, ReadBytesExt};
 use std::convert::TryFrom;
 use std::io;
 use super::errors::TryFromError;
-use super::{ReadResult, WriteResult, ReadFrom, WriteTo, Reader, ReaderStatus, HasReader};
+use super::{ReadResult, WriteResult, ReadFrom, WriteTo};
+use super::reader::{Reader, ReaderStatus, HasReader};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ErrorCode {

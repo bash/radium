@@ -1,8 +1,9 @@
 use std::io;
 use std::convert::TryFrom;
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use super::{ReadFrom, WriteTo, ReadResult, WriteResult, Reader, ReaderStatus, HasReader};
+use super::{ReadFrom, WriteTo, ReadResult, WriteResult};
 use super::errors::TryFromError;
+use super::reader::{Reader, ReaderStatus, HasReader};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum MessageType {
@@ -122,7 +123,7 @@ impl TryFrom<u8> for MessageType {
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::ReaderStatus;
+    use super::super::reader::ReaderStatus;
 
     macro_rules! test_message_type {
         ($msg:expr, $value:expr, $command:expr) => {{

@@ -2,10 +2,10 @@ use std::env;
 use std::io;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{WriteTo, WriteResult, ReaderStatus, Reader, MessageInner, Message, HasReader};
+use super::super::{WriteTo, WriteResult, MessageInner, Message};
 use super::super::errors::{WriteError, DataLengthError};
-
-use ReaderStatus::{Complete, Pending};
+use super::super::reader::{Reader, ReaderStatus, HasReader};
+use super::super::reader::ReaderStatus::{Pending, Complete};
 
 /// default value for maximum bytes of data (2KiB)
 const MAX_DATA_BYTES: u64 = 2048;

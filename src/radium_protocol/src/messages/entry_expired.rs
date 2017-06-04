@@ -1,9 +1,10 @@
 use std::io;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{WriteTo, WriteResult, Reader, ReaderStatus, Message, MessageInner, HasReader};
+use super::super::{WriteTo, WriteResult, Message, MessageInner};
 use super::super::errors::{WriteError, DataLengthError};
-use ReaderStatus::{Pending, Complete};
+use super::super::reader::{Reader, ReaderStatus, HasReader};
+use super::super::reader::ReaderStatus::{Pending, Complete};
 
 /// ts: i64 | id: u16 | tag: u64 | len: u16 | data: (len < 2**16)
 #[derive(Debug, Eq, PartialEq, Clone)]

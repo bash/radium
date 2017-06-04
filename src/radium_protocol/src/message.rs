@@ -1,6 +1,7 @@
 use std::io;
 use byteorder::WriteBytesExt;
-use super::{MessageType, WriteTo, WriteResult, ReaderStatus, Reader, HasReader};
+use super::{MessageType, WriteTo, WriteResult};
+use super::reader::{Reader, ReaderStatus, HasReader};
 use super::messages::{
     AddEntry, AddEntryReader,
     EntryAdded, EntryAddedReader,

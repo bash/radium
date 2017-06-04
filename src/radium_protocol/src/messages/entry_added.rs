@@ -1,7 +1,8 @@
 use std::io;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{WriteTo, WriteResult, Reader, ReaderStatus, MessageInner, Message, HasReader};
-use ReaderStatus::{Pending, Complete};
+use super::super::{WriteTo, WriteResult, MessageInner, Message};
+use super::super::reader::{Reader, ReaderStatus, HasReader};
+use super::super::reader::ReaderStatus::{Pending, Complete};
 
 /// ts: i64 | id: u16
 #[derive(Debug, Eq, PartialEq, Clone)]
