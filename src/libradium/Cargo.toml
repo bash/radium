@@ -9,3 +9,7 @@ time = "0.1"
 
 [[example]]
 name = "main"
+
+[features]
+default = []
+with-ticks = []
