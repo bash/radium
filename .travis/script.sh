@@ -4,7 +4,7 @@ set -e
 
 fold_start () {
   if [ ! -z "${TRAVIS}" ]; then
-    echo -en "travis_fold:start:${1}\\r"
+    echo -en "travis_fold:start:${1}"
   else
     tput setaf 4
     echo "=> ${1}"
@@ -14,7 +14,7 @@ fold_start () {
 
 fold_end () {
   if [ ! -z "${TRAVIS}" ]; then
-    echo -en "travis_fold:end:${1}\\r"
+    echo -en "travis_fold:end:${1}"
   fi
 }
 
