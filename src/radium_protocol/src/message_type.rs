@@ -40,7 +40,7 @@ impl MessageType {
             MessageType::AddEntry |
             MessageType::RemoveEntry |
             MessageType::SetWatchMode => true,
-            _ => false
+            _ => false,
         }
     }
 
@@ -58,7 +58,9 @@ impl HasReader for MessageType {
 }
 
 impl Reader<MessageType> for MessageTypeReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<MessageType>> where I: io::Read {
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<MessageType>>
+        where I: io::Read
+    {
         let value = input.read_u8()?;
         let msg_type = MessageType::try_from(value)?;
 

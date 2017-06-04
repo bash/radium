@@ -12,11 +12,13 @@ const MAX_DATA_BYTES: u64 = 2048;
 
 fn get_max_data_bytes() -> u64 {
     match env::var("RADIUM_MAX_DATA_BYTES") {
-        Ok(val) => match val.parse::<u64>() {
-            Ok(val) => val,
-            Err(..) => MAX_DATA_BYTES
-        },
-        Err(..) => MAX_DATA_BYTES
+        Ok(val) => {
+            match val.parse::<u64>() {
+                Ok(val) => val,
+                Err(..) => MAX_DATA_BYTES,
+            }
+        }
+        Err(..) => MAX_DATA_BYTES,
     }
 }
 
@@ -46,7 +48,7 @@ impl AddEntry {
         AddEntry {
             timestamp: timestamp.into(),
             tag,
-            data
+            data,
         }
     }
 
@@ -82,18 +84,20 @@ impl HasReader for AddEntry {
 }
 
 impl Reader<AddEntry> for AddEntryReader {
-    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<AddEntry>> where R: io::Read {
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<AddEntry>>
+        where R: io::Read
+    {
         let (state, status) = match self.state {
             ReaderState::Timestamp => {
                 let timestamp = input.read_i64::<NetworkEndian>()?;
 
                 (ReaderState::Tag(timestamp), Pending)
-            },
+            }
             ReaderState::Tag(timestamp) => {
                 let tag = input.read_u64::<NetworkEndian>()?;
 
                 (ReaderState::Length(timestamp, tag), Pending)
-            },
+            }
             ReaderState::Length(timestamp, tag) => {
                 let length = input.read_u16::<NetworkEndian>()? as u64;
 
@@ -102,7 +106,7 @@ impl Reader<AddEntry> for AddEntryReader {
                 }
 
                 (ReaderState::Data(timestamp, tag, length), Pending)
-            },
+            }
             ReaderState::Data(timestamp, tag, length) => {
                 let mut buf = Vec::new();
                 let bytes_read = input.take(length).read_to_end(&mut buf)?;
@@ -112,7 +116,7 @@ impl Reader<AddEntry> for AddEntryReader {
                 }
 
                 (ReaderState::Timestamp, Complete(AddEntry::new(timestamp, tag, buf)))
-            },
+            }
         };
 
         self.state = state;
@@ -120,7 +124,7 @@ impl Reader<AddEntry> for AddEntryReader {
         Ok(status)
     }
 
-    fn rewind (&mut self) {
+    fn rewind(&mut self) {
         self.state = ReaderState::Timestamp;
     }
 }
@@ -163,7 +167,8 @@ mod test {
         let result = test_reader!(Message::reader(), input);
 
         assert!(result.is_ok());
-        assert_eq!(Message::AddEntry(AddEntry::new(10, 42, vec![1, 2, 3])), result.unwrap());
+        assert_eq!(Message::AddEntry(AddEntry::new(10, 42, vec![1, 2, 3])),
+                   result.unwrap());
     }
 
     #[test]
@@ -192,7 +197,8 @@ mod test {
 
         let result = test_reader!(AddEntry::reader(), input);
 
-        assert_eq!(DataLengthError::new().description(), result.unwrap_err().description());
+        assert_eq!(DataLengthError::new().description(),
+                   result.unwrap_err().description());
     }
 
     #[test]

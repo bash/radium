@@ -22,4 +22,3 @@ macro_rules! test_writer {
         }
     }
 }
-

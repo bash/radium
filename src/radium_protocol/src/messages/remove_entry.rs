@@ -51,7 +51,9 @@ impl HasReader for RemoveEntry {
 }
 
 impl Reader<RemoveEntry> for RemoveEntryReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<RemoveEntry>> where I: io::Read {
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<RemoveEntry>>
+        where I: io::Read
+    {
         let (state, status) = match self.state {
             ReaderState::Timestamp => {
                 let timestamp = input.read_i64::<NetworkEndian>()?;

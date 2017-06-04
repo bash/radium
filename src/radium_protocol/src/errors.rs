@@ -16,7 +16,7 @@ pub enum TryFromError {
 #[deprecated(note = "Use custom `io::Error`s instead")]
 pub enum WriteError {
     IoError(io::Error),
-    DataLengthOverflow
+    DataLengthOverflow,
 }
 
 impl_err_display!(InvalidValueError);
@@ -90,7 +90,9 @@ impl From<WriteError> for io::Error {
     fn from(err: WriteError) -> Self {
         match err {
             WriteError::IoError(err) => err,
-            WriteError::DataLengthOverflow => io::Error::new(io::ErrorKind::Other, WriteError::DataLengthOverflow),
+            WriteError::DataLengthOverflow => {
+                io::Error::new(io::ErrorKind::Other, WriteError::DataLengthOverflow)
+            }
         }
     }
 }

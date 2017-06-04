@@ -25,7 +25,9 @@ pub trait HasWriter: Sized {
 /// [`Writer`]: ./trait.Writer.html
 /// [`WriterStatus::Pending`]: ./enum.WriterStatus.html
 #[derive(Debug)]
-pub struct WriterController<W> where W: Writer {
+pub struct WriterController<W>
+    where W: Writer
+{
     inner: W,
 }
 
@@ -37,11 +39,15 @@ pub struct WriterController<W> where W: Writer {
 /// [`Writer`]: ./trait.Writer.html
 /// [`WriterController`]: ./struct.WriterController.html
 #[derive(Debug)]
-pub struct SyncWriterController<W> where W: Writer {
+pub struct SyncWriterController<W>
+    where W: Writer
+{
     inner: W,
 }
 
-pub struct WriteQueue<T> where T: HasWriter {
+pub struct WriteQueue<T>
+    where T: HasWriter
+{
     queue: VecDeque<T>,
     writer: Option<WriterController<T::Writer>>,
     limit: Option<usize>,
@@ -76,7 +82,9 @@ pub trait Writer {
 }
 
 impl WriterStatus {
-    pub fn map<F>(self, map_fn: F) -> WriterStatus where F: FnOnce() -> () {
+    pub fn map<F>(self, map_fn: F) -> WriterStatus
+        where F: FnOnce() -> ()
+    {
         match self {
             WriterStatus::Pending => WriterStatus::Pending,
             WriterStatus::Complete => {
@@ -92,42 +100,56 @@ impl WriterStatus {
 ///
 /// [`Writer<T>`]: ./trait.Writer.html
 /// [`WriterController`]: ./struct.WriterController.html
-impl<W> WriterController<W> where W: Writer {
+impl<W> WriterController<W>
+    where W: Writer
+{
     pub fn new(inner: W) -> Self {
         WriterController { inner }
     }
 
     /// Resumes with the given output
-    pub fn resume<O>(&mut self, output: &mut O) -> io::Result<WriterStatus> where O: io::Write {
+    pub fn resume<O>(&mut self, output: &mut O) -> io::Result<WriterStatus>
+        where O: io::Write
+    {
         match self.inner.resume(output) {
-            Ok(status) => match status {
-                WriterStatus::Complete => Ok(WriterStatus::Complete),
-                WriterStatus::Pending => self.resume(output),
-            },
-            Err(err) => match err.kind() {
-                ErrorKind::WouldBlock => Ok(WriterStatus::Pending),
-                _ => {
-                    self.inner.rewind();
-                    Err(err)
+            Ok(status) => {
+                match status {
+                    WriterStatus::Complete => Ok(WriterStatus::Complete),
+                    WriterStatus::Pending => self.resume(output),
                 }
-            },
+            }
+            Err(err) => {
+                match err.kind() {
+                    ErrorKind::WouldBlock => Ok(WriterStatus::Pending),
+                    _ => {
+                        self.inner.rewind();
+                        Err(err)
+                    }
+                }
+            }
         }
     }
 }
 
-impl<W> SyncWriterController<W> where W: Writer {
+impl<W> SyncWriterController<W>
+    where W: Writer
+{
     pub fn new(inner: W) -> Self {
         SyncWriterController { inner }
     }
 
     /// Resumes with the given output
-    pub fn resume<O>(&mut self, output: &mut O) -> io::Result<()> where O: io::Write {
+    pub fn resume<O>(&mut self, output: &mut O) -> io::Result<()>
+        where O: io::Write
+    {
         loop {
             match self.inner.resume(output) {
-                Ok(status) => match status {
-                    WriterStatus::Complete => { return Ok(()) }
-                    WriterStatus::Pending => {}
-                },
+                Ok(status) => {
+                    match status {
+                        WriterStatus::Complete => return Ok(()),
+                        WriterStatus::Pending => {}
+                    }
+                }
                 Err(err) => {
                     self.inner.rewind();
                     return Err(err);
@@ -137,7 +159,9 @@ impl<W> SyncWriterController<W> where W: Writer {
     }
 }
 
-impl<T> WriteQueue<T> where T: HasWriter {
+impl<T> WriteQueue<T>
+    where T: HasWriter
+{
     pub fn new() -> Self {
         WriteQueue {
             limit: None,
@@ -170,18 +194,22 @@ impl<T> WriteQueue<T> where T: HasWriter {
         }
     }
 
-    pub fn resume<O>(&mut self, output: &mut O) -> io::Result<()> where O: io::Write {
+    pub fn resume<O>(&mut self, output: &mut O) -> io::Result<()>
+        where O: io::Write
+    {
         if let None = self.writer {
             self.next_writer();
         }
 
         loop {
             match self.writer {
-                Some(ref mut writer) => match writer.resume(output)? {
-                    WriterStatus::Pending => { break }
-                    WriterStatus::Complete => {}
-                },
-                None => { break }
+                Some(ref mut writer) => {
+                    match writer.resume(output)? {
+                        WriterStatus::Pending => break,
+                        WriterStatus::Complete => {}
+                    }
+                }
+                None => break,
             }
 
             self.next_writer();

@@ -2,14 +2,9 @@ use std::io;
 use byteorder::WriteBytesExt;
 use super::{MessageType, WriteTo, WriteResult};
 use super::reader::{Reader, ReaderStatus, HasReader};
-use super::messages::{
-    AddEntry, AddEntryReader,
-    EntryAdded, EntryAddedReader,
-    SetWatchMode, SetWatchModeReader,
-    ErrorMessage, ErrorMessageReader,
-    EntryExpired, EntryExpiredReader,
-    RemoveEntry, RemoveEntryReader,
-};
+use super::messages::{AddEntry, AddEntryReader, EntryAdded, EntryAddedReader, SetWatchMode,
+                      SetWatchModeReader, ErrorMessage, ErrorMessageReader, EntryExpired,
+                      EntryExpiredReader, RemoveEntry, RemoveEntryReader};
 
 macro_rules! msg_reader {
     ($reader: expr, $input: expr) => {
@@ -71,7 +66,7 @@ enum ReaderState {
 
 #[derive(Debug)]
 pub struct MessageReader {
-    state: ReaderState
+    state: ReaderState,
 }
 
 pub trait MessageInner {
@@ -112,17 +107,19 @@ impl HasReader for Message {
 }
 
 impl Reader<Message> for MessageReader {
-    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Message>> where R: io::Read {
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Message>>
+        where R: io::Read
+    {
         let (state, status) = match self.state {
             ReaderState::Type => {
                 #[allow(unreachable_patterns)]
                 let state = match MessageType::reader().resume(input)? {
                     ReaderStatus::Pending => unreachable!(),
-                    ReaderStatus::Complete(val) => Some(ReaderState::Message(val))
+                    ReaderStatus::Complete(val) => Some(ReaderState::Message(val)),
                 };
 
                 (state, ReaderStatus::Pending)
-            },
+            }
             ReaderState::Message(msg_type) => {
                 #[allow(unreachable_patterns)]
                 match msg_type {
@@ -139,7 +136,7 @@ impl Reader<Message> for MessageReader {
                     MessageType::EntryRemoved => unreachable!(),
                     MessageType::EntryExpired => into_msg_reader!(EntryExpired),
                 }
-            },
+            }
             ReaderState::SetWatchMode(ref mut reader) => msg_reader!(reader, input),
             ReaderState::AddEntry(ref mut reader) => msg_reader!(reader, input),
             ReaderState::ErrorMessage(ref mut reader) => msg_reader!(reader, input),
@@ -230,5 +227,7 @@ mod test {
                   Message::SetWatchMode(SetWatchMode::new(WatchMode::None)),
                   MessageType::SetWatchMode);
 
-    test_message!(test_error, Message::Error(ErrorMessage::new(ErrorCode::ClientRejected)), MessageType::Error);
+    test_message!(test_error,
+                  Message::Error(ErrorMessage::new(ErrorCode::ClientRejected)),
+                  MessageType::Error);
 }

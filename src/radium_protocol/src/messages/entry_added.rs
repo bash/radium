@@ -60,7 +60,9 @@ impl WriteTo for EntryAdded {
 }
 
 impl Reader<EntryAdded> for EntryAddedReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<EntryAdded>> where I: io::Read {
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<EntryAdded>>
+        where I: io::Read
+    {
         let (state, status) = match self.state {
             ReaderState::Timestamp => {
                 let timestamp = input.read_i64::<NetworkEndian>()?;

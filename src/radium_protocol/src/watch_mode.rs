@@ -61,7 +61,10 @@ impl HasWriter for WatchMode {
     type Writer = WatchModeWriter;
 
     fn writer(self) -> Self::Writer {
-        WatchModeWriter { state: WriterState::initial(), value: self }
+        WatchModeWriter {
+            state: WriterState::initial(),
+            value: self,
+        }
     }
 }
 
@@ -78,7 +81,9 @@ impl WriterState {
 }
 
 impl Reader<WatchMode> for WatchModeReader {
-    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<WatchMode>> where R: io::Read {
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<WatchMode>>
+        where R: io::Read
+    {
         let (state, status) = match self.state {
             ReaderState::Mode => {
                 let mode = input.read_u8()?;
@@ -87,14 +92,14 @@ impl Reader<WatchMode> for WatchModeReader {
                     0 => (ReaderState::initial(), ReaderStatus::Complete(WatchMode::None)),
                     1 => (ReaderState::initial(), ReaderStatus::Complete(WatchMode::All)),
                     2 => (ReaderState::Tag, ReaderStatus::Pending),
-                    _ => { return Err(InvalidValueError::new()) }
+                    _ => return Err(InvalidValueError::new()),
                 }
-            },
+            }
             ReaderState::Tag => {
                 let tag = input.read_u64::<NetworkEndian>()?;
 
                 (ReaderState::initial(), ReaderStatus::Complete(WatchMode::Tagged(tag)))
-            },
+            }
         };
 
         self.state = state;
@@ -108,7 +113,9 @@ impl Reader<WatchMode> for WatchModeReader {
 }
 
 impl Writer for WatchModeWriter {
-    fn resume<O>(&mut self, output: &mut O) -> io::Result<WriterStatus> where O: io::Write {
+    fn resume<O>(&mut self, output: &mut O) -> io::Result<WriterStatus>
+        where O: io::Write
+    {
         let (state, status) = match self.state {
             WriterState::Mode => {
                 let (next, status, mode) = match self.value {

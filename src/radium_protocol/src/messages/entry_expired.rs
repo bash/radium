@@ -96,7 +96,9 @@ impl WriteTo for EntryExpired {
 }
 
 impl Reader<EntryExpired> for EntryExpiredReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<EntryExpired>> where I: io::Read {
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<EntryExpired>>
+        where I: io::Read
+    {
         let (state, status) = match self.state {
             ReaderState::Timestamp => {
                 let timestamp = input.read_i64::<NetworkEndian>()?;
@@ -190,7 +192,8 @@ mod test {
         let result = test_reader!(EntryExpired::reader(), input);
 
         assert!(result.is_err());
-        assert_eq!(DataLengthError::new().description(), result.unwrap_err().description());
+        assert_eq!(DataLengthError::new().description(),
+                   result.unwrap_err().description());
     }
 
     #[test]
