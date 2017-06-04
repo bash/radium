@@ -1,5 +1,5 @@
 use std::io;
-use super::super::{ReadFrom, WriteTo, ErrorCode, ReadResult, WriteResult, MessageInner, Message};
+use super::super::{WriteTo, ErrorCode, WriteResult, MessageInner, Message};
 use super::super::reader::{Reader, ReaderStatus, HasReader};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -31,14 +31,6 @@ impl HasReader for ErrorMessage {
 
     fn reader() -> Self::Reader {
         ErrorMessageReader {}
-    }
-}
-
-impl ReadFrom for ErrorMessage {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let code = ErrorCode::read_from(source)?;
-
-        Ok(ErrorMessage::new(code))
     }
 }
 

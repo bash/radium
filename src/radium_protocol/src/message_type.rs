@@ -1,7 +1,7 @@
 use std::io;
 use std::convert::TryFrom;
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use super::{ReadFrom, WriteTo, ReadResult, WriteResult};
+use super::{WriteTo, WriteResult};
 use super::errors::TryFromError;
 use super::reader::{Reader, ReaderStatus, HasReader};
 
@@ -66,14 +66,6 @@ impl Reader<MessageType> for MessageTypeReader {
     }
 
     fn rewind(&mut self) {}
-}
-
-impl ReadFrom for MessageType {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let value = source.read_u8()?;
-
-        Ok(Self::try_from(value)?)
-    }
 }
 
 impl WriteTo for MessageType {

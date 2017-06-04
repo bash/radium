@@ -2,7 +2,7 @@ use byteorder::{WriteBytesExt, ReadBytesExt};
 use std::convert::TryFrom;
 use std::io;
 use super::errors::TryFromError;
-use super::{ReadResult, WriteResult, ReadFrom, WriteTo};
+use super::{WriteResult, WriteTo};
 use super::reader::{Reader, ReaderStatus, HasReader};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -55,14 +55,6 @@ impl TryFrom<u8> for ErrorCode {
             4 => Ok(ErrorCode::ConnectionFailure),
             _ => Err(TryFromError::InvalidValue),
         }
-    }
-}
-
-impl ReadFrom for ErrorCode {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let value = source.read_u8()?;
-
-        Ok(ErrorCode::try_from(value)?)
     }
 }
 

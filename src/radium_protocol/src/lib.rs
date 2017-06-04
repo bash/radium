@@ -17,12 +17,12 @@ mod message_type;
 #[deprecated(note = "Use new Reader/Writer api instead")]
 mod io;
 
-pub mod reader;
 mod watch_mode;
 mod error_code;
 
 pub mod messages;
 pub mod errors;
+pub mod reader;
 
 pub use self::message_type::*;
 pub use self::message::*;
