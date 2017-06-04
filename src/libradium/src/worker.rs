@@ -16,8 +16,9 @@ const CHECK_INTERVAL: u64 = 1;
 const RECV_TIMEOUT: u64 = 500;
 
 pub trait Listener<T: Send + 'static>: Send {
-    fn on_expired(&self, entry: Entry<T>);
-    fn on_tick(&self) {}
+    fn on_expired(&self, entry: Vec<Entry<T>>);
+    #[cfg(feature = "with-ticks")]
+    fn on_tick(&self);
 }
 
 #[derive(Debug)]
@@ -70,7 +71,9 @@ impl<T: Send + 'static> Worker<T> {
             }
 
             if self.needs_checking() {
+                #[cfg(feature = "with-ticks")]
                 self.listener.on_tick();
+
                 self.check_expired();
             }
         }
@@ -96,10 +99,7 @@ impl<T: Send + 'static> Worker<T> {
 
     fn check_expired(&mut self) {
         self.last_checked = Some(Instant::now());
-
-        for entry in self.storage.expire_entries() {
-            self.listener.on_expired(entry);
-        }
+        self.listener.on_expired(self.storage.expire_entries());
     }
 
     fn needs_checking(&self) -> bool {

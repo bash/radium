@@ -5,4 +5,9 @@ authors = ["Ruben Schmidmeister <ruben.schmidmeister@icloud.com>"]
 
 [dependencies]
 libradium = { path = "../libradium" }
-time = "0.1"
+radium_protocol = { path = "../radium_protocol" }
+mio_channel = { path = "../mio_channel" }
+mio = "0.6"
+slab = "0.3.0"
+log = "0.3"
+getopts = "0.2.4"

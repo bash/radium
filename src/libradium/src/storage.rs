@@ -23,6 +23,7 @@ impl<T: Send + 'static> Storage<T> {
         self.entries.remove(&id)
     }
 
+    // TODO: add max expired entries per turn (-> use environment variable)
     pub fn expire_entries(&mut self) -> Vec<Entry<T>> {
         let mut entries = Vec::<Entry<T>>::new();
         let now = Timestamp::now();
