@@ -66,7 +66,7 @@ mod test {
             /* tag           */ 0, 0, 0, 0, 0, 0, 255, 255
         ];
 
-        let result = test_reader2!(SetWatchMode::reader(), input);
+        let result = test_reader!(SetWatchMode::reader(), input);
 
         assert!(result.is_ok());
         assert_eq!(SetWatchMode::new(WatchMode::Tagged(65535)), result.unwrap());
@@ -78,7 +78,7 @@ mod test {
             /* mode = all */ 1
         ];
 
-        let result = test_reader2!(SetWatchMode::reader(), input);
+        let result = test_reader!(SetWatchMode::reader(), input);
 
         assert!(result.is_ok());
         assert_eq!(SetWatchMode::new(WatchMode::All), result.unwrap());

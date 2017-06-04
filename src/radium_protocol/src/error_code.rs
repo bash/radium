@@ -91,7 +91,7 @@ mod test {
     #[test]
     pub fn test_reader() {
         let vec = vec![0];
-        let result = test_reader2!(ErrorCode::reader(), vec);
+        let result = test_reader!(ErrorCode::reader(), vec);
 
         assert!(result.is_ok());
         assert_eq!(ErrorCode::ClientRejected, result.unwrap());

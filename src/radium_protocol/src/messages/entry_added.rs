@@ -113,7 +113,7 @@ mod test {
             /* id  */ 0, 23,
         ];
 
-        let result = test_reader2!(EntryAdded::reader(), input);
+        let result = test_reader!(EntryAdded::reader(), input);
 
         assert!(result.is_ok());
         assert_eq!(EntryAdded::new(12345, 23), result.unwrap());

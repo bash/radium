@@ -160,7 +160,7 @@ mod test {
             /* data */ 1, 2, 3
         ];
 
-        let result = test_reader2!(Message::reader(), input);
+        let result = test_reader!(Message::reader(), input);
 
         assert!(result.is_ok());
         assert_eq!(Message::AddEntry(AddEntry::new(10, 42, vec![1, 2, 3])), result.unwrap());
@@ -175,7 +175,7 @@ mod test {
             /* data */ 1, 2, 3, 4
         ];
 
-        let result = test_reader2!(AddEntry::reader(), input);
+        let result = test_reader!(AddEntry::reader(), input);
 
         assert!(result.is_ok());
         assert_eq!(AddEntry::new(10, 65535, vec![1, 2, 3]), result.unwrap());
@@ -190,7 +190,7 @@ mod test {
             /* data */ 1, 2, 3
         ];
 
-        let result = test_reader2!(AddEntry::reader(), input);
+        let result = test_reader!(AddEntry::reader(), input);
 
         assert_eq!(DataLengthError::new().description(), result.unwrap_err().description());
     }

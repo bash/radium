@@ -155,7 +155,7 @@ mod test {
             /* data */ 1, 2, 3,
         ];
 
-        let result = test_reader2!(EntryExpired::reader(), input);
+        let result = test_reader!(EntryExpired::reader(), input);
 
         assert!(result.is_ok());
         assert_eq!(EntryExpired::new(10, 7, 42, vec![1, 2, 3]), result.unwrap());
@@ -171,7 +171,7 @@ mod test {
             /* data */ 1, 2, 3, 4,
         ];
 
-        let result = test_reader2!(EntryExpired::reader(), input);
+        let result = test_reader!(EntryExpired::reader(), input);
 
         assert!(result.is_ok());
         assert_eq!(EntryExpired::new(10, 7, 32, vec![1, 2, 3]), result.unwrap());
@@ -187,7 +187,7 @@ mod test {
             /* data */ 1, 2, 3,
         ];
 
-        let result = test_reader2!(EntryExpired::reader(), input);
+        let result = test_reader!(EntryExpired::reader(), input);
 
         assert!(result.is_err());
         assert_eq!(DataLengthError::new().description(), result.unwrap_err().description());
