@@ -46,7 +46,7 @@ class SetWatchMode {
     socket.write(UInt8(7))
     socket.write(UInt8(this._mode))
 
-    if (this._tag !== null && this._mode === WatchMode.Tagged) {
+    if (this._tag && this._mode === WatchMode.Tagged) {
       socket.write(UInt64(this._tag))
     }
   }
@@ -101,7 +101,8 @@ radium.onConnected()
     console.log('Received', resp)
 
     if (enableWatchMode) {
-      return radium.action(new SetWatchMode(WatchMode.Tagged, Number.parseInt(process.argv[3])))
+      const tag = Number.parseInt(process.argv[3])
+      return radium.action(new SetWatchMode(tag ? WatchMode.Tagged : WatchMode.All, tag))
     }
   })
   .then(() => {
