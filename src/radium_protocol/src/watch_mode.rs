@@ -17,7 +17,7 @@ pub enum WatchMode {
 }
 
 #[derive(Debug)]
-enum WatchModeReaderState {
+enum ReaderState {
     Mode,
     Tag,
 }
@@ -30,7 +30,7 @@ enum WriterState {
 
 #[derive(Debug)]
 pub struct WatchModeReader {
-    state: WatchModeReaderState
+    state: ReaderState,
 }
 
 #[derive(Debug)]
@@ -53,7 +53,7 @@ impl HasReader for WatchMode {
     type Reader = WatchModeReader;
 
     fn reader() -> Self::Reader {
-        WatchModeReader { state: WatchModeReaderState::Mode }
+        WatchModeReader { state: ReaderState::Mode }
     }
 }
 
@@ -62,6 +62,12 @@ impl HasWriter for WatchMode {
 
     fn writer(self) -> Self::Writer {
         WatchModeWriter { state: WriterState::initial(), value: self }
+    }
+}
+
+impl ReaderState {
+    pub fn initial() -> Self {
+        ReaderState::Mode
     }
 }
 
@@ -74,20 +80,20 @@ impl WriterState {
 impl Reader<WatchMode> for WatchModeReader {
     fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<WatchMode>> where R: io::Read {
         let (state, status) = match self.state {
-            WatchModeReaderState::Mode => {
+            ReaderState::Mode => {
                 let mode = input.read_u8()?;
 
                 match mode {
-                    0 => (WatchModeReaderState::Mode, ReaderStatus::Complete(WatchMode::None)),
-                    1 => (WatchModeReaderState::Mode, ReaderStatus::Complete(WatchMode::All)),
-                    2 => (WatchModeReaderState::Tag, ReaderStatus::Pending),
+                    0 => (ReaderState::initial(), ReaderStatus::Complete(WatchMode::None)),
+                    1 => (ReaderState::initial(), ReaderStatus::Complete(WatchMode::All)),
+                    2 => (ReaderState::Tag, ReaderStatus::Pending),
                     _ => { return Err(InvalidValueError::new()) }
                 }
             },
-            WatchModeReaderState::Tag => {
+            ReaderState::Tag => {
                 let tag = input.read_u64::<NetworkEndian>()?;
 
-                (WatchModeReaderState::Mode, ReaderStatus::Complete(WatchMode::Tagged(tag)))
+                (ReaderState::initial(), ReaderStatus::Complete(WatchMode::Tagged(tag)))
             },
         };
 
@@ -97,7 +103,7 @@ impl Reader<WatchMode> for WatchModeReader {
     }
 
     fn rewind(&mut self) {
-        self.state = WatchModeReaderState::Mode;
+        self.state = ReaderState::Mode;
     }
 }
 
