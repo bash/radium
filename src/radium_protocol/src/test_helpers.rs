@@ -10,3 +10,16 @@ macro_rules! test_reader {
     }
 }
 
+#[macro_export]
+macro_rules! test_writer {
+    ($writer: expr, $output: expr) => {
+        {
+            let mut buf = io::Cursor::new($output);
+            let mut ctrl = $crate::writer::SyncWriterController::new($writer);
+            let result = ctrl.resume(&mut buf);
+
+            (buf.into_inner(), result)
+        }
+    }
+}
+
