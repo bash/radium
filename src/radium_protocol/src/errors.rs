@@ -127,3 +127,12 @@ impl From<io::Error> for WriteError {
         WriteError::IoError(err)
     }
 }
+
+impl From<WriteError> for io::Error {
+    fn from(err: WriteError) -> Self {
+        match err {
+            WriteError::IoError(err) => err,
+            WriteError::DataLengthOverflow => io::Error::new(io::ErrorKind::Other, WriteError::DataLengthOverflow),
+        }
+    }
+}
