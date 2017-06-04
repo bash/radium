@@ -26,13 +26,13 @@ struct TestListener {
 }
 
 enum Output {
-    Expired(Entry<User>),
+    Expired(Vec<Entry<User>>),
     Tick,
 }
 
 impl Listener<User> for TestListener {
-    fn on_expired(&self, entry: Entry<User>) {
-        self.tx.send(Output::Expired(entry)).unwrap();
+    fn on_expired(&self, entries: Vec<Entry<User>>) {
+        self.tx.send(Output::Expired(entries)).unwrap();
     }
 
     fn on_tick(&self) {
@@ -81,8 +81,10 @@ fn main() {
 
     loop {
         match rx_listener.recv().unwrap() {
-            Output::Expired(entry) => {
-                print!("({:?}, {})", entry.id().timestamp().sec, entry.data().age());
+            Output::Expired(entries) => {
+                for entry in entries {
+                    print!("({:?}, {})", entry.id().timestamp().sec, entry.data().age());
+                }
                 io::stdout().flush().unwrap();
             }
             Output::Tick => {
