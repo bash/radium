@@ -59,8 +59,10 @@ impl WriteTo for EntryAdded {
     }
 }
 
-impl Reader<EntryAdded> for EntryAddedReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<EntryAdded>>
+impl Reader for EntryAddedReader {
+    type Output = EntryAdded;
+
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<Self::Output>>
         where I: io::Read
     {
         let (state, status) = match self.state {

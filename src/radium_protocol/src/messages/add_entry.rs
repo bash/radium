@@ -83,8 +83,10 @@ impl HasReader for AddEntry {
     }
 }
 
-impl Reader<AddEntry> for AddEntryReader {
-    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<AddEntry>>
+impl Reader for AddEntryReader {
+    type Output = AddEntry;
+
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Self::Output>>
         where R: io::Read
     {
         let (state, status) = match self.state {

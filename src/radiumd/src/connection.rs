@@ -13,7 +13,7 @@ pub use self::AddConnResult::{Added, Rejected};
 pub struct Connection {
     sock: TcpStream,
     watch_mode: WatchMode,
-    reader: ReaderController<Message, MessageReader>,
+    reader: ReaderController<MessageReader>,
     write_queue: VecDeque<Message>,
 }
 

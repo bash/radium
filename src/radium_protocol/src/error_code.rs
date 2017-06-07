@@ -65,8 +65,10 @@ impl WriteTo for ErrorCode {
     }
 }
 
-impl Reader<ErrorCode> for ErrorCodeReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<ErrorCode>>
+impl Reader for ErrorCodeReader {
+    type Output = ErrorCode;
+
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<Self::Output>>
         where I: io::Read
     {
         let value = input.read_u8()?;

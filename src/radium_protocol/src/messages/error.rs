@@ -40,8 +40,10 @@ impl WriteTo for ErrorMessage {
     }
 }
 
-impl Reader<ErrorMessage> for ErrorMessageReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<ErrorMessage>>
+impl Reader for ErrorMessageReader {
+    type Output = ErrorMessage;
+
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<Self::Output>>
         where I: io::Read
     {
         let mut reader = ErrorCode::reader();

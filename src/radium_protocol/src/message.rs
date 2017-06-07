@@ -106,8 +106,10 @@ impl HasReader for Message {
     }
 }
 
-impl Reader<Message> for MessageReader {
-    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Message>>
+impl Reader for MessageReader {
+    type Output = Message;
+
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Self::Output>>
         where R: io::Read
     {
         let (state, status) = match self.state {

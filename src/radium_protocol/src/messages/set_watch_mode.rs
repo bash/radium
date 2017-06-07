@@ -36,8 +36,10 @@ impl HasReader for SetWatchMode {
     }
 }
 
-impl Reader<SetWatchMode> for SetWatchModeReader {
-    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<SetWatchMode>>
+impl Reader for SetWatchModeReader {
+    type Output = SetWatchMode;
+
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Self::Output>>
         where R: io::Read
     {
         let status = self.inner.resume(input)?;

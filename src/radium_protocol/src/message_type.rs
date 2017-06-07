@@ -57,7 +57,9 @@ impl HasReader for MessageType {
     }
 }
 
-impl Reader<MessageType> for MessageTypeReader {
+impl Reader for MessageTypeReader {
+    type Output = MessageType;
+
     fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<MessageType>>
         where I: io::Read
     {

@@ -50,8 +50,10 @@ impl HasReader for RemoveEntry {
     }
 }
 
-impl Reader<RemoveEntry> for RemoveEntryReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<RemoveEntry>>
+impl Reader for RemoveEntryReader {
+    type Output = RemoveEntry;
+
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<Self::Output>>
         where I: io::Read
     {
         let (state, status) = match self.state {

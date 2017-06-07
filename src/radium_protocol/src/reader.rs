@@ -1,6 +1,5 @@
 use std::io;
 use std::io::ErrorKind;
-use std::marker::PhantomData;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ReaderStatus<T> {
@@ -9,7 +8,7 @@ pub enum ReaderStatus<T> {
 }
 
 pub trait HasReader: Sized {
-    type Reader: Reader<Self>;
+    type Reader: Reader<Output=Self>;
 
     fn reader() -> Self::Reader;
 }
@@ -24,11 +23,10 @@ pub trait HasReader: Sized {
 /// [`Reader`]: ./trait.Reader.html
 /// [`ReaderStatus::Pending`]: ./enum.ReaderStatus.html
 #[derive(Debug)]
-pub struct ReaderController<T, R>
-    where R: Reader<T>
+pub struct ReaderController<R>
+    where R: Reader
 {
     inner: R,
-    _marker: PhantomData<T>,
 }
 
 /// tl;dr - A `SyncReaderController` is used with blocking I/O.
@@ -39,11 +37,10 @@ pub struct ReaderController<T, R>
 /// [`Reader`]: ./trait.Reader.html
 /// [`ReaderController`]: ./struct.ReaderController.html
 #[derive(Debug)]
-pub struct SyncReaderController<T, R>
-    where R: Reader<T>
+pub struct SyncReaderController<R>
+    where R: Reader
 {
     inner: R,
-    _marker: PhantomData<T>,
 }
 
 /// A `Reader` is a resumable parser that eventually emits a value of type `T`.
@@ -53,9 +50,11 @@ pub struct SyncReaderController<T, R>
 /// this is the job of the [`ReaderController`].
 ///
 /// [`ReaderController`]: ./struct.ReaderController.html
-pub trait Reader<T> {
+pub trait Reader {
+    type Output;
+
     /// Resumes the reader with the given input
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<T>> where I: io::Read;
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<Self::Output>> where I: io::Read;
 
     /// Rewinds the reader to its initial state
     fn rewind(&mut self);
@@ -77,18 +76,15 @@ impl<T> ReaderStatus<T> {
 ///
 /// [`Reader<T>`]: ./trait.Reader.html
 /// [`ReaderController`]: ./struct.ReaderController.html
-impl<T, R> ReaderController<T, R>
-    where R: Reader<T>
+impl<R> ReaderController<R>
+    where R: Reader
 {
     pub fn new(inner: R) -> Self {
-        ReaderController {
-            inner,
-            _marker: PhantomData {},
-        }
+        ReaderController { inner }
     }
 
     /// Resumes with the given input
-    pub fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<T>>
+    pub fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<R::Output>>
         where I: io::Read
     {
         match self.inner.resume(input) {
@@ -111,18 +107,15 @@ impl<T, R> ReaderController<T, R>
     }
 }
 
-impl<T, R> SyncReaderController<T, R>
-    where R: Reader<T>
+impl<R> SyncReaderController<R>
+    where R: Reader
 {
     pub fn new(inner: R) -> Self {
-        SyncReaderController {
-            inner,
-            _marker: PhantomData {},
-        }
+        SyncReaderController { inner }
     }
 
     /// Resumes with the given input
-    pub fn resume<I>(&mut self, input: &mut I) -> io::Result<T>
+    pub fn resume<I>(&mut self, input: &mut I) -> io::Result<R::Output>
         where I: io::Read
     {
         loop {

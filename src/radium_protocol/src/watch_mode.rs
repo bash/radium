@@ -80,8 +80,10 @@ impl WriterState {
     }
 }
 
-impl Reader<WatchMode> for WatchModeReader {
-    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<WatchMode>>
+impl Reader for WatchModeReader {
+    type Output = WatchMode;
+
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Self::Output>>
         where R: io::Read
     {
         let (state, status) = match self.state {

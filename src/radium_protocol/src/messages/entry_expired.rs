@@ -95,8 +95,10 @@ impl WriteTo for EntryExpired {
     }
 }
 
-impl Reader<EntryExpired> for EntryExpiredReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<EntryExpired>>
+impl Reader for EntryExpiredReader {
+    type Output = EntryExpired;
+
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<Self::Output>>
         where I: io::Read
     {
         let (state, status) = match self.state {
