@@ -4,6 +4,7 @@ use std::io;
 use super::errors::TryFromError;
 use super::{WriteResult, WriteTo};
 use super::reader::{Reader, ReaderStatus, HasReader};
+use super::writer::{Writer, WriterStatus, HasWriter};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ErrorCode {
@@ -23,11 +24,23 @@ pub enum ErrorCode {
 
 pub struct ErrorCodeReader;
 
+pub struct ErrorCodeWriter {
+    code: ErrorCode,
+}
+
 impl HasReader for ErrorCode {
     type Reader = ErrorCodeReader;
 
     fn reader() -> ErrorCodeReader {
         ErrorCodeReader {}
+    }
+}
+
+impl HasWriter for ErrorCode {
+    type Writer = ErrorCodeWriter;
+
+    fn writer(self) -> Self::Writer {
+        ErrorCodeWriter { code: self }
     }
 }
 
@@ -80,6 +93,18 @@ impl Reader for ErrorCodeReader {
     fn rewind(&mut self) {}
 }
 
+impl Writer for ErrorCodeWriter {
+    fn resume<O>(&mut self, output: &mut O) -> io::Result<WriterStatus>
+        where O: io::Write
+    {
+        output.write_u8(self.code.into())?;
+
+        Ok(WriterStatus::Complete)
+    }
+
+    fn rewind(&mut self) {}
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -91,5 +116,13 @@ mod test {
 
         assert!(result.is_ok());
         assert_eq!(ErrorCode::ClientRejected, result.unwrap());
+    }
+
+    #[test]
+    pub fn test_writer() {
+        let (buf, result) = test_writer!(ErrorCode::ClientRejected.writer());
+
+        assert!(result.is_ok());
+        assert_eq!(vec![0], buf);
     }
 }

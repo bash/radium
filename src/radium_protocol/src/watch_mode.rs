@@ -163,7 +163,7 @@ mod test {
             }
 
             {
-                let (buf, result) = test_writer!($mode.writer(), $raw);
+                let (buf, result) = test_writer!($mode.writer());
 
                 assert!(result.is_ok());
                 assert_eq!($raw, buf);

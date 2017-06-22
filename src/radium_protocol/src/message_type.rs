@@ -1,9 +1,9 @@
 use std::io;
 use std::convert::TryFrom;
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use super::{WriteTo, WriteResult};
 use super::errors::TryFromError;
 use super::reader::{Reader, ReaderStatus, HasReader};
+use super::writer::{Writer, WriterStatus, HasWriter};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum MessageType {
@@ -30,7 +30,13 @@ pub enum MessageType {
     Error,
 }
 
+#[derive(Debug)]
 pub struct MessageTypeReader;
+
+#[derive(Debug)]
+pub struct MessageTypeWriter {
+    inner: MessageType,
+}
 
 impl MessageType {
     /// Determines if the message is a command that is handled by the server
@@ -57,6 +63,14 @@ impl HasReader for MessageType {
     }
 }
 
+impl HasWriter for MessageType {
+    type Writer = MessageTypeWriter;
+
+    fn writer(self) -> Self::Writer {
+        MessageTypeWriter { inner: self }
+    }
+}
+
 impl Reader for MessageTypeReader {
     type Output = MessageType;
 
@@ -72,11 +86,14 @@ impl Reader for MessageTypeReader {
     fn rewind(&mut self) {}
 }
 
-impl WriteTo for MessageType {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
-        target.write_u8((*self).into())?;
-        Ok(())
+impl Writer for MessageTypeWriter {
+    fn resume<O>(&mut self, output: &mut O) -> io::Result<WriterStatus> where O: io::Write {
+        output.write_u8(self.inner.into())?;
+
+        Ok(WriterStatus::Complete)
     }
+
+    fn rewind(&mut self) {}
 }
 
 impl Into<u8> for MessageType {
@@ -119,22 +136,26 @@ impl TryFrom<u8> for MessageType {
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::reader::ReaderStatus;
 
     macro_rules! test_message_type {
         ($msg:expr, $value:expr, $command:expr) => {{
-            let mut buf = vec![];
-            assert!($msg.write_to(&mut buf).is_ok());
-            assert_eq!(vec![$value], buf);
-
             assert_eq!($value as u8, $msg.into());
             assert_eq!($msg, MessageType::try_from($value as u8).unwrap());
             assert_eq!($command, $msg.is_command());
 
-            let mut reader = MessageType::reader();
-            let input = &mut ::std::io::Cursor::new(vec![$value]);
+            {
+                let (buf, result) = test_writer!($msg.writer());
 
-            assert_eq!(ReaderStatus::Complete($msg), reader.resume(input).unwrap());
+                assert!(result.is_ok());
+                assert_eq!(vec![$value], buf);
+            }
+
+            {
+                let result = test_reader!(MessageType::reader(), vec![$value]);
+
+                assert!(result.is_ok());
+                assert_eq!($msg, result.unwrap());
+            }
         }};
     }
 
