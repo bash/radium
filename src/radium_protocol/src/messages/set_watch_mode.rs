@@ -1,6 +1,10 @@
 use std::io;
-use super::super::{WriteTo, WatchMode, WatchModeReader, WriteResult, MessageInner, Message};
+use super::super::{WatchMode, WatchModeReader, MessageInner, Message};
 use super::super::reader::{Reader, ReaderStatus, HasReader};
+use super::super::writer::HasWriter;
+use super::super::WatchModeWriter;
+
+pub type SetWatchModeWriter = WatchModeWriter;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct SetWatchMode {
@@ -19,6 +23,14 @@ impl SetWatchMode {
 
     pub fn mode(&self) -> WatchMode {
         self.mode
+    }
+}
+
+impl HasWriter for SetWatchMode {
+    type Writer = WatchModeWriter;
+
+    fn writer(self) -> Self::Writer {
+        WatchModeWriter::new(self.mode)
     }
 }
 
@@ -49,13 +61,6 @@ impl Reader for SetWatchModeReader {
 
     fn rewind(&mut self) {
         self.inner.rewind();
-    }
-}
-
-impl WriteTo for SetWatchMode {
-    fn write_to<W: io::Write>(&self, _: &mut W) -> WriteResult {
-        Ok(())
-        // self.mode.write_to(target)
     }
 }
 
