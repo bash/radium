@@ -61,10 +61,7 @@ impl HasWriter for WatchMode {
     type Writer = WatchModeWriter;
 
     fn writer(self) -> Self::Writer {
-        WatchModeWriter {
-            state: WriterState::initial(),
-            value: self,
-        }
+        WatchModeWriter::new(self)
     }
 }
 
@@ -111,6 +108,12 @@ impl Reader for WatchModeReader {
 
     fn rewind(&mut self) {
         self.state = ReaderState::Mode;
+    }
+}
+
+impl WatchModeWriter {
+    pub fn new(value: WatchMode) -> WatchModeWriter {
+        WatchModeWriter { state: WriterState::initial(), value }
     }
 }
 
