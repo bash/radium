@@ -1,9 +1,10 @@
 use std::io;
 use byteorder::WriteBytesExt;
-use super::{MessageType, WriteTo, WriteResult};
+use super::{MessageType, MessageTypeWriter, WriteTo, WriteResult};
 use super::reader::{Reader, ReaderStatus, HasReader};
+use super::writer::{Writer, WriterStatus, HasWriter};
 use super::messages::{AddEntry, AddEntryReader, EntryAdded, EntryAddedReader, SetWatchMode,
-                      SetWatchModeReader, ErrorMessage, ErrorMessageReader, EntryExpired,
+                      SetWatchModeReader, SetWatchModeWriter, ErrorMessage, ErrorMessageReader, EntryExpired,
                       EntryExpiredReader, RemoveEntry, RemoveEntryReader};
 
 macro_rules! msg_reader {
@@ -31,6 +32,21 @@ macro_rules! into_msg_reader {
 macro_rules! empty_msg {
     ($variant: ident) => {
         (Some(ReaderState::Type), ReaderStatus::Complete(Message::$variant))
+    }
+}
+
+macro_rules! into_msg_writer {
+    ($variant: ident, $inner: expr) => {
+        (Some(WriterState::$variant($inner.writer())), WriterStatus::Pending)
+    }
+}
+
+macro_rules! msg_writer {
+    ($writer: expr, $output: expr) => {
+        match $writer.resume($output)? {
+            WriterStatus::Pending => (None, WriterStatus::Pending),
+            WriterStatus::Complete => (Some(WriterState::initial()), WriterStatus::Complete),
+        }
     }
 }
 
@@ -65,8 +81,21 @@ enum ReaderState {
 }
 
 #[derive(Debug)]
+enum WriterState {
+    Initial,
+    Type(MessageTypeWriter),
+    SetWatchMode(SetWatchModeWriter),
+}
+
+#[derive(Debug)]
 pub struct MessageReader {
     state: ReaderState,
+}
+
+#[derive(Debug)]
+pub struct MessageWriter {
+    state: WriterState,
+    message: Message,
 }
 
 pub trait MessageInner {
@@ -102,7 +131,39 @@ impl HasReader for Message {
     type Reader = MessageReader;
 
     fn reader() -> Self::Reader {
-        MessageReader { state: ReaderState::Type }
+        MessageReader::new()
+    }
+}
+
+impl HasWriter for Message {
+    type Writer = MessageWriter;
+
+    fn writer(self) -> Self::Writer {
+        MessageWriter::new(self)
+    }
+}
+
+impl ReaderState {
+    pub fn initial() -> ReaderState {
+        ReaderState::Type
+    }
+}
+
+impl WriterState {
+    pub fn initial() -> WriterState {
+        WriterState::Initial
+    }
+}
+
+impl MessageReader {
+    pub fn new() -> Self {
+        MessageReader { state: ReaderState::initial() }
+    }
+}
+
+impl MessageWriter {
+    pub fn new(message: Message) -> Self {
+        MessageWriter { message, state: WriterState::initial() }
     }
 }
 
@@ -124,20 +185,20 @@ impl Reader for MessageReader {
             }
             ReaderState::Message(msg_type) => {
                 #[allow(unreachable_patterns)]
-                match msg_type {
-                    MessageType::Ping => empty_msg!(Ping),
-                    MessageType::Pong => empty_msg!(Pong),
-                    MessageType::EntryRemoved => empty_msg!(EntryRemoved),
-                    MessageType::Ok => empty_msg!(Ok),
-                    MessageType::SetWatchMode => into_msg_reader!(SetWatchMode),
-                    MessageType::AddEntry => into_msg_reader!(AddEntry),
-                    MessageType::Error => into_msg_reader!(ErrorMessage),
-                    MessageType::EntryAdded => into_msg_reader!(EntryAdded),
-                    MessageType::RemoveEntry => into_msg_reader!(RemoveEntry),
-                    // TODO: implement EntryRemoved
-                    MessageType::EntryRemoved => unreachable!(),
-                    MessageType::EntryExpired => into_msg_reader!(EntryExpired),
-                }
+                    match msg_type {
+                        MessageType::Ping => empty_msg!(Ping),
+                        MessageType::Pong => empty_msg!(Pong),
+                        MessageType::EntryRemoved => empty_msg!(EntryRemoved),
+                        MessageType::Ok => empty_msg!(Ok),
+                        MessageType::SetWatchMode => into_msg_reader!(SetWatchMode),
+                        MessageType::AddEntry => into_msg_reader!(AddEntry),
+                        MessageType::Error => into_msg_reader!(ErrorMessage),
+                        MessageType::EntryAdded => into_msg_reader!(EntryAdded),
+                        MessageType::RemoveEntry => into_msg_reader!(RemoveEntry),
+                        // TODO: implement EntryRemoved
+                        MessageType::EntryRemoved => unreachable!(),
+                        MessageType::EntryExpired => into_msg_reader!(EntryExpired),
+                    }
             }
             ReaderState::SetWatchMode(ref mut reader) => msg_reader!(reader, input),
             ReaderState::AddEntry(ref mut reader) => msg_reader!(reader, input),
@@ -159,6 +220,39 @@ impl Reader for MessageReader {
     }
 }
 
+impl Writer for MessageWriter {
+    fn resume<O>(&mut self, output: &mut O) -> io::Result<WriterStatus>
+        where O: io::Write
+    {
+        let (state, status) = match self.state {
+            WriterState::Initial => {
+                let writer = self.message.message_type().writer();
+
+                (Some(WriterState::Type(writer)), WriterStatus::Pending)
+            }
+            WriterState::Type(ref mut writer) => {
+                writer.resume(output)?;
+
+                match self.message.clone() {
+                    Message::SetWatchMode(inner) => into_msg_writer!(SetWatchMode, inner),
+                    _ => panic!(),
+                }
+            }
+            WriterState::SetWatchMode(ref mut writer) => msg_writer!(writer, output),
+        };
+
+        if let Some(state) = state {
+            self.state = state;
+        }
+
+        Ok(status)
+    }
+
+    fn rewind(&mut self) {
+        self.state = WriterState::initial();
+    }
+}
+
 impl WriteTo for Message {
     fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
         target.write_u8(self.message_type().into())?;
@@ -171,9 +265,9 @@ impl WriteTo for Message {
             &Message::RemoveEntry(ref msg) => msg.write_to(target),
             &Message::EntryRemoved => Ok(()),
             &Message::EntryExpired(ref msg) => msg.write_to(target),
-            &Message::SetWatchMode(ref msg) => msg.write_to(target),
             &Message::Ok => Ok(()),
             &Message::Error(ref msg) => msg.write_to(target),
+            _ => Ok(()),
         }
     }
 }
