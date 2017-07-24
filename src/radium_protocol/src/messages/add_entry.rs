@@ -2,21 +2,23 @@ use std::env;
 use std::io;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{WriteTo, WriteResult, ReaderStatus, Reader, MessageInner, Message};
+use super::super::{WriteTo, WriteResult, MessageInner, Message};
 use super::super::errors::{WriteError, DataLengthError};
-
-use ReaderStatus::{Complete, Pending};
+use super::super::reader::{Reader, ReaderStatus, HasReader};
+use super::super::reader::ReaderStatus::{Pending, Complete};
 
 /// default value for maximum bytes of data (2KiB)
 const MAX_DATA_BYTES: u64 = 2048;
 
 fn get_max_data_bytes() -> u64 {
     match env::var("RADIUM_MAX_DATA_BYTES") {
-        Ok(val) => match val.parse::<u64>() {
-            Ok(val) => val,
-            Err(..) => MAX_DATA_BYTES
-        },
-        Err(..) => MAX_DATA_BYTES
+        Ok(val) => {
+            match val.parse::<u64>() {
+                Ok(val) => val,
+                Err(..) => MAX_DATA_BYTES,
+            }
+        }
+        Err(..) => MAX_DATA_BYTES,
     }
 }
 
@@ -46,7 +48,7 @@ impl AddEntry {
         AddEntry {
             timestamp: timestamp.into(),
             tag,
-            data
+            data,
         }
     }
 
@@ -65,10 +67,6 @@ impl AddEntry {
     pub fn consume_data(self) -> Vec<u8> {
         self.data
     }
-
-    pub fn reader() -> AddEntryReader {
-        AddEntryReader { state: ReaderState::Timestamp }
-    }
 }
 
 impl MessageInner for AddEntry {
@@ -77,19 +75,31 @@ impl MessageInner for AddEntry {
     }
 }
 
-impl Reader<AddEntry> for AddEntryReader {
-    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<AddEntry>> where R: io::Read {
+impl HasReader for AddEntry {
+    type Reader = AddEntryReader;
+
+    fn reader() -> Self::Reader {
+        AddEntryReader { state: ReaderState::Timestamp }
+    }
+}
+
+impl Reader for AddEntryReader {
+    type Output = AddEntry;
+
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Self::Output>>
+        where R: io::Read
+    {
         let (state, status) = match self.state {
             ReaderState::Timestamp => {
                 let timestamp = input.read_i64::<NetworkEndian>()?;
 
                 (ReaderState::Tag(timestamp), Pending)
-            },
+            }
             ReaderState::Tag(timestamp) => {
                 let tag = input.read_u64::<NetworkEndian>()?;
 
                 (ReaderState::Length(timestamp, tag), Pending)
-            },
+            }
             ReaderState::Length(timestamp, tag) => {
                 let length = input.read_u16::<NetworkEndian>()? as u64;
 
@@ -98,7 +108,7 @@ impl Reader<AddEntry> for AddEntryReader {
                 }
 
                 (ReaderState::Data(timestamp, tag, length), Pending)
-            },
+            }
             ReaderState::Data(timestamp, tag, length) => {
                 let mut buf = Vec::new();
                 let bytes_read = input.take(length).read_to_end(&mut buf)?;
@@ -108,7 +118,7 @@ impl Reader<AddEntry> for AddEntryReader {
                 }
 
                 (ReaderState::Timestamp, Complete(AddEntry::new(timestamp, tag, buf)))
-            },
+            }
         };
 
         self.state = state;
@@ -116,7 +126,7 @@ impl Reader<AddEntry> for AddEntryReader {
         Ok(status)
     }
 
-    fn rewind (&mut self) {
+    fn rewind(&mut self) {
         self.state = ReaderState::Timestamp;
     }
 }
@@ -156,10 +166,11 @@ mod test {
             /* data */ 1, 2, 3
         ];
 
-        let result = test_reader2!(Message::reader(), input);
+        let result = test_reader!(Message::reader(), input);
 
         assert!(result.is_ok());
-        assert_eq!(Message::AddEntry(AddEntry::new(10, 42, vec![1, 2, 3])), result.unwrap());
+        assert_eq!(Message::AddEntry(AddEntry::new(10, 42, vec![1, 2, 3])),
+                   result.unwrap());
     }
 
     #[test]
@@ -171,7 +182,7 @@ mod test {
             /* data */ 1, 2, 3, 4
         ];
 
-        let result = test_reader2!(AddEntry::reader(), input);
+        let result = test_reader!(AddEntry::reader(), input);
 
         assert!(result.is_ok());
         assert_eq!(AddEntry::new(10, 65535, vec![1, 2, 3]), result.unwrap());
@@ -186,9 +197,10 @@ mod test {
             /* data */ 1, 2, 3
         ];
 
-        let result = test_reader2!(AddEntry::reader(), input);
+        let result = test_reader!(AddEntry::reader(), input);
 
-        assert_eq!(DataLengthError::new().description(), result.unwrap_err().description());
+        assert_eq!(DataLengthError::new().description(),
+                   result.unwrap_err().description());
     }
 
     #[test]

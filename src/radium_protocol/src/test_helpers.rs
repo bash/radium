@@ -1,27 +1,24 @@
 #[macro_export]
 macro_rules! test_reader {
-    ($reader: expr, $input: expr, $( $state:expr ),*) => {
-        {
-            let mut reader = $reader;
-            let input = &mut ::std::io::Cursor::new($input);
-
-            $(
-                let next = reader.resume(input).unwrap();
-                assert_eq!($state, next);
-            )*
-        }
-    };
-}
-
-#[macro_export]
-macro_rules! test_reader2 {
     ($reader: expr, $input: expr) => {
         {
             let mut buf = io::Cursor::new($input);
-            let mut ctrl = $crate::SyncReaderController::new($reader);
+            let mut ctrl = $crate::reader::SyncReaderController::new($reader);
 
             ctrl.resume(&mut buf)
         }
     }
 }
 
+#[macro_export]
+macro_rules! test_writer {
+    ($writer: expr) => {
+        {
+            let mut buf = io::Cursor::new(vec![]);
+            let mut ctrl = $crate::writer::SyncWriterController::new($writer);
+            let result = ctrl.resume(&mut buf);
+
+            (buf.into_inner(), result)
+        }
+    }
+}

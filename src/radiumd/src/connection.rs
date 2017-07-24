@@ -4,15 +4,16 @@ use mio::{Evented, Poll, Token, Ready, PollOpt};
 use mio::tcp::TcpStream;
 use slab::{Slab, IterMut};
 use std::collections::VecDeque;
-use radium_protocol::{WatchMode, ReaderController, Message, MessageReader, ReaderStatus, WriteValueExt};
+use radium_protocol::{WatchMode, Message, MessageReader, WriteValueExt};
 use radium_protocol::errors::WriteError;
+use radium_protocol::reader::{ReaderController, ReaderStatus, HasReader};
 pub use self::AddConnResult::{Added, Rejected};
 
 #[derive(Debug)]
 pub struct Connection {
     sock: TcpStream,
     watch_mode: WatchMode,
-    reader: ReaderController<Message, MessageReader>,
+    reader: ReaderController<MessageReader>,
     write_queue: VecDeque<Message>,
 }
 

@@ -7,7 +7,7 @@ use mio_channel::Receiver;
 use mio::{Poll, Token, Ready, PollOpt, Events, Event};
 use mio::unix::UnixReady;
 use radium_protocol::{Message, WriteValueExt, ErrorCode};
-use radium_protocol::errors::{ReadError, WriteError};
+use radium_protocol::errors::WriteError;
 use radium_protocol::messages::{EntryExpired, ErrorMessage};
 
 use super::actions::Action;
@@ -25,7 +25,6 @@ pub enum WorkerMessage {
 
 #[derive(Debug)]
 pub enum WorkerError {
-    ReadError(ReadError),
     WriteError(WriteError),
     IoError(io::Error),
 }
@@ -49,7 +48,6 @@ impl fmt::Display for WorkerError {
 impl Error for WorkerError {
     fn description(&self) -> &str {
         match self {
-            &WorkerError::ReadError(ref err) => err.description(),
             &WorkerError::WriteError(ref err) => err.description(),
             &WorkerError::IoError(ref err) => err.description(),
         }
@@ -57,7 +55,6 @@ impl Error for WorkerError {
 
     fn cause(&self) -> Option<&Error> {
         match self {
-            &WorkerError::ReadError(ref err) => err.cause(),
             &WorkerError::WriteError(ref err) => err.cause(),
             &WorkerError::IoError(ref err) => err.cause(),
         }
@@ -67,12 +64,6 @@ impl Error for WorkerError {
 impl From<io::Error> for WorkerError {
     fn from(err: io::Error) -> Self {
         WorkerError::IoError(err)
-    }
-}
-
-impl From<ReadError> for WorkerError {
-    fn from(err: ReadError) -> Self {
-        WorkerError::ReadError(err)
     }
 }
 

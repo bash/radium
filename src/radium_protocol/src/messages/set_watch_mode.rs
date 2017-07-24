@@ -1,5 +1,10 @@
 use std::io;
-use super::super::{WriteTo, WatchMode, WatchModeReader, WriteResult, Reader, ReaderStatus, MessageInner, Message};
+use super::super::{WatchMode, WatchModeReader, MessageInner, Message};
+use super::super::reader::{Reader, ReaderStatus, HasReader};
+use super::super::writer::HasWriter;
+use super::super::WatchModeWriter;
+
+pub type SetWatchModeWriter = WatchModeWriter;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct SetWatchMode {
@@ -19,21 +24,36 @@ impl SetWatchMode {
     pub fn mode(&self) -> WatchMode {
         self.mode
     }
+}
 
-    pub fn reader() -> SetWatchModeReader {
-        SetWatchModeReader { inner: WatchMode::reader() }
+impl HasWriter for SetWatchMode {
+    type Writer = WatchModeWriter;
+
+    fn writer(self) -> Self::Writer {
+        WatchModeWriter::new(self.mode)
     }
 }
 
 impl MessageInner for SetWatchMode {
-    #[inline]
     fn wrap(self) -> Message {
         Message::SetWatchMode(self)
     }
 }
 
-impl Reader<SetWatchMode> for SetWatchModeReader {
-    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<SetWatchMode>> where R: io::Read {
+impl HasReader for SetWatchMode {
+    type Reader = SetWatchModeReader;
+
+    fn reader() -> Self::Reader {
+        SetWatchModeReader { inner: WatchMode::reader() }
+    }
+}
+
+impl Reader for SetWatchModeReader {
+    type Output = SetWatchMode;
+
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Self::Output>>
+        where R: io::Read
+    {
         let status = self.inner.resume(input)?;
 
         Ok(status.map(|mode| SetWatchMode::new(mode)))
@@ -44,48 +64,33 @@ impl Reader<SetWatchMode> for SetWatchModeReader {
     }
 }
 
-impl WriteTo for SetWatchMode {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
-        self.mode.write_to(target)
-    }
-}
-
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::super::{MessageType, WatchMode};
+    use super::super::super::WatchMode;
 
     #[test]
     fn test_reader_with_tagged() {
         let input = vec![
-            /* type          */ MessageType::SetWatchMode.into(),
             /* mode = tagged */ 2,
             /* tag           */ 0, 0, 0, 0, 0, 0, 255, 255
         ];
 
-        test_reader! {
-            Message::reader(),
-            input,
-            ReaderStatus::Pending,
-            ReaderStatus::Pending,
-            ReaderStatus::Pending,
-            ReaderStatus::Complete(Message::SetWatchMode(SetWatchMode::new(WatchMode::Tagged(65535))))
-        };
+        let result = test_reader!(SetWatchMode::reader(), input);
+
+        assert!(result.is_ok());
+        assert_eq!(SetWatchMode::new(WatchMode::Tagged(65535)), result.unwrap());
     }
 
     #[test]
     fn test_reader() {
         let input = vec![
-            /* type        */ MessageType::SetWatchMode.into(),
-            /* mode = all  */ 1
+            /* mode = all */ 1
         ];
 
-        test_reader! {
-            Message::reader(),
-            input,
-            ReaderStatus::Pending,
-            ReaderStatus::Pending,
-            ReaderStatus::Complete(Message::SetWatchMode(SetWatchMode::new(WatchMode::All)))
-        };
+        let result = test_reader!(SetWatchMode::reader(), input);
+
+        assert!(result.is_ok());
+        assert_eq!(SetWatchMode::new(WatchMode::All), result.unwrap());
     }
 }

@@ -2,7 +2,9 @@ use byteorder::{WriteBytesExt, ReadBytesExt};
 use std::convert::TryFrom;
 use std::io;
 use super::errors::TryFromError;
-use super::{ReadResult, WriteResult, ReadFrom, WriteTo, Reader, ReaderStatus};
+use super::{WriteResult, WriteTo};
+use super::reader::{Reader, ReaderStatus, HasReader};
+use super::writer::{Writer, WriterStatus, HasWriter};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ErrorCode {
@@ -22,9 +24,23 @@ pub enum ErrorCode {
 
 pub struct ErrorCodeReader;
 
-impl ErrorCode {
-    pub fn reader() -> ErrorCodeReader {
+pub struct ErrorCodeWriter {
+    code: ErrorCode,
+}
+
+impl HasReader for ErrorCode {
+    type Reader = ErrorCodeReader;
+
+    fn reader() -> ErrorCodeReader {
         ErrorCodeReader {}
+    }
+}
+
+impl HasWriter for ErrorCode {
+    type Writer = ErrorCodeWriter;
+
+    fn writer(self) -> Self::Writer {
+        ErrorCodeWriter { code: self }
     }
 }
 
@@ -55,14 +71,6 @@ impl TryFrom<u8> for ErrorCode {
     }
 }
 
-impl ReadFrom for ErrorCode {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let value = source.read_u8()?;
-
-        Ok(ErrorCode::try_from(value)?)
-    }
-}
-
 impl WriteTo for ErrorCode {
     fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
         target.write_u8((*self).into())?;
@@ -70,12 +78,28 @@ impl WriteTo for ErrorCode {
     }
 }
 
-impl Reader<ErrorCode> for ErrorCodeReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<ErrorCode>> where I: io::Read {
+impl Reader for ErrorCodeReader {
+    type Output = ErrorCode;
+
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<Self::Output>>
+        where I: io::Read
+    {
         let value = input.read_u8()?;
         let code = ErrorCode::try_from(value)?;
 
         Ok(ReaderStatus::Complete(code))
+    }
+
+    fn rewind(&mut self) {}
+}
+
+impl Writer for ErrorCodeWriter {
+    fn resume<O>(&mut self, output: &mut O) -> io::Result<WriterStatus>
+        where O: io::Write
+    {
+        output.write_u8(self.code.into())?;
+
+        Ok(WriterStatus::Complete)
     }
 
     fn rewind(&mut self) {}
@@ -86,11 +110,19 @@ mod test {
     use super::*;
 
     #[test]
-    pub fn test_reader () {
+    pub fn test_reader() {
         let vec = vec![0];
-        let result = test_reader2!(ErrorCode::reader(), vec);
+        let result = test_reader!(ErrorCode::reader(), vec);
 
         assert!(result.is_ok());
         assert_eq!(ErrorCode::ClientRejected, result.unwrap());
+    }
+
+    #[test]
+    pub fn test_writer() {
+        let (buf, result) = test_writer!(ErrorCode::ClientRejected.writer());
+
+        assert!(result.is_ok());
+        assert_eq!(vec![0], buf);
     }
 }

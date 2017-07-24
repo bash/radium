@@ -1,7 +1,8 @@
 use std::io;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{WriteTo, WriteResult, Reader, ReaderStatus, Message, MessageInner};
-use ReaderStatus::{Pending, Complete};
+use super::super::{WriteTo, WriteResult, Message, MessageInner};
+use super::super::reader::{Reader, ReaderStatus, HasReader};
+use super::super::reader::ReaderStatus::{Pending, Complete};
 
 /// ts: i64 | id: u16
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -26,10 +27,6 @@ impl RemoveEntry {
         RemoveEntry { timestamp, id }
     }
 
-    pub fn reader() -> RemoveEntryReader {
-        RemoveEntryReader { state: ReaderState::Timestamp }
-    }
-
     pub fn timestamp(&self) -> i64 {
         self.timestamp
     }
@@ -45,8 +42,20 @@ impl MessageInner for RemoveEntry {
     }
 }
 
-impl Reader<RemoveEntry> for RemoveEntryReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<RemoveEntry>> where I: io::Read {
+impl HasReader for RemoveEntry {
+    type Reader = RemoveEntryReader;
+
+    fn reader() -> Self::Reader {
+        RemoveEntryReader { state: ReaderState::Timestamp }
+    }
+}
+
+impl Reader for RemoveEntryReader {
+    type Output = RemoveEntry;
+
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<Self::Output>>
+        where I: io::Read
+    {
         let (state, status) = match self.state {
             ReaderState::Timestamp => {
                 let timestamp = input.read_i64::<NetworkEndian>()?;
@@ -109,7 +118,7 @@ mod test {
             /* id  */ 0, 23,
         ];
 
-        let result = test_reader2!(RemoveEntry::reader(), input);
+        let result = test_reader!(RemoveEntry::reader(), input);
 
         assert!(result.is_ok());
         assert_eq!(RemoveEntry::new(12345, 23), result.unwrap());

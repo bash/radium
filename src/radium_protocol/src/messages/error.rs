@@ -1,5 +1,6 @@
 use std::io;
-use super::super::{ReadFrom, WriteTo, ErrorCode, ReadResult, WriteResult, Reader, ReaderStatus, MessageInner, Message};
+use super::super::{WriteTo, ErrorCode, WriteResult, MessageInner, Message};
+use super::super::reader::{Reader, ReaderStatus, HasReader};
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ErrorMessage {
@@ -14,10 +15,6 @@ impl ErrorMessage {
         ErrorMessage { code }
     }
 
-    pub fn reader() -> ErrorMessageReader {
-        ErrorMessageReader {}
-    }
-
     pub fn code(&self) -> ErrorCode {
         self.code
     }
@@ -29,11 +26,11 @@ impl MessageInner for ErrorMessage {
     }
 }
 
-impl ReadFrom for ErrorMessage {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let code = ErrorCode::read_from(source)?;
+impl HasReader for ErrorMessage {
+    type Reader = ErrorMessageReader;
 
-        Ok(ErrorMessage::new(code))
+    fn reader() -> Self::Reader {
+        ErrorMessageReader {}
     }
 }
 
@@ -43,8 +40,12 @@ impl WriteTo for ErrorMessage {
     }
 }
 
-impl Reader<ErrorMessage> for ErrorMessageReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<ErrorMessage>> where I: io::Read {
+impl Reader for ErrorMessageReader {
+    type Output = ErrorMessage;
+
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<Self::Output>>
+        where I: io::Read
+    {
         let mut reader = ErrorCode::reader();
         let status = reader.resume(input)?;
 

@@ -1,9 +1,10 @@
 use std::io;
 use std::io::Read;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{WriteTo, WriteResult, Reader, ReaderStatus, Message, MessageInner, HasReader};
+use super::super::{WriteTo, WriteResult, Message, MessageInner};
 use super::super::errors::{WriteError, DataLengthError};
-use ReaderStatus::{Pending, Complete};
+use super::super::reader::{Reader, ReaderStatus, HasReader};
+use super::super::reader::ReaderStatus::{Pending, Complete};
 
 /// ts: i64 | id: u16 | tag: u64 | len: u16 | data: (len < 2**16)
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -24,7 +25,6 @@ enum ReaderState {
 }
 
 impl ReaderState {
-    #[inline]
     fn initial() -> ReaderState {
         ReaderState::Timestamp
     }
@@ -95,8 +95,12 @@ impl WriteTo for EntryExpired {
     }
 }
 
-impl Reader<EntryExpired> for EntryExpiredReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<EntryExpired>> where I: io::Read {
+impl Reader for EntryExpiredReader {
+    type Output = EntryExpired;
+
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<Self::Output>>
+        where I: io::Read
+    {
         let (state, status) = match self.state {
             ReaderState::Timestamp => {
                 let timestamp = input.read_i64::<NetworkEndian>()?;
@@ -155,7 +159,7 @@ mod test {
             /* data */ 1, 2, 3,
         ];
 
-        let result = test_reader2!(EntryExpired::reader(), input);
+        let result = test_reader!(EntryExpired::reader(), input);
 
         assert!(result.is_ok());
         assert_eq!(EntryExpired::new(10, 7, 42, vec![1, 2, 3]), result.unwrap());
@@ -171,7 +175,7 @@ mod test {
             /* data */ 1, 2, 3, 4,
         ];
 
-        let result = test_reader2!(EntryExpired::reader(), input);
+        let result = test_reader!(EntryExpired::reader(), input);
 
         assert!(result.is_ok());
         assert_eq!(EntryExpired::new(10, 7, 32, vec![1, 2, 3]), result.unwrap());
@@ -187,10 +191,11 @@ mod test {
             /* data */ 1, 2, 3,
         ];
 
-        let result = test_reader2!(EntryExpired::reader(), input);
+        let result = test_reader!(EntryExpired::reader(), input);
 
         assert!(result.is_err());
-        assert_eq!(DataLengthError::new().description(), result.unwrap_err().description());
+        assert_eq!(DataLengthError::new().description(),
+                   result.unwrap_err().description());
     }
 
     #[test]

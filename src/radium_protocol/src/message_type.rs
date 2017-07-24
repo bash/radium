@@ -1,8 +1,9 @@
 use std::io;
 use std::convert::TryFrom;
 use byteorder::{ReadBytesExt, WriteBytesExt};
-use super::{ReadFrom, WriteTo, ReadResult, WriteResult, Reader, ReaderStatus};
 use super::errors::TryFromError;
+use super::reader::{Reader, ReaderStatus, HasReader};
+use super::writer::{Writer, WriterStatus, HasWriter};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum MessageType {
@@ -29,7 +30,13 @@ pub enum MessageType {
     Error,
 }
 
+#[derive(Debug)]
 pub struct MessageTypeReader;
+
+#[derive(Debug)]
+pub struct MessageTypeWriter {
+    inner: MessageType,
+}
 
 impl MessageType {
     /// Determines if the message is a command that is handled by the server
@@ -39,21 +46,37 @@ impl MessageType {
             MessageType::AddEntry |
             MessageType::RemoveEntry |
             MessageType::SetWatchMode => true,
-            _ => false
+            _ => false,
         }
     }
 
     pub fn to_u8(self) -> u8 {
         self.into()
     }
+}
 
-    pub fn reader() -> MessageTypeReader {
+impl HasReader for MessageType {
+    type Reader = MessageTypeReader;
+
+    fn reader() -> Self::Reader {
         MessageTypeReader {}
     }
 }
 
-impl Reader<MessageType> for MessageTypeReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<MessageType>> where I: io::Read {
+impl HasWriter for MessageType {
+    type Writer = MessageTypeWriter;
+
+    fn writer(self) -> Self::Writer {
+        MessageTypeWriter { inner: self }
+    }
+}
+
+impl Reader for MessageTypeReader {
+    type Output = MessageType;
+
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<MessageType>>
+        where I: io::Read
+    {
         let value = input.read_u8()?;
         let msg_type = MessageType::try_from(value)?;
 
@@ -63,19 +86,14 @@ impl Reader<MessageType> for MessageTypeReader {
     fn rewind(&mut self) {}
 }
 
-impl ReadFrom for MessageType {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let value = source.read_u8()?;
+impl Writer for MessageTypeWriter {
+    fn resume<O>(&mut self, output: &mut O) -> io::Result<WriterStatus> where O: io::Write {
+        output.write_u8(self.inner.into())?;
 
-        Ok(Self::try_from(value)?)
+        Ok(WriterStatus::Complete)
     }
-}
 
-impl WriteTo for MessageType {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
-        target.write_u8((*self).into())?;
-        Ok(())
-    }
+    fn rewind(&mut self) {}
 }
 
 impl Into<u8> for MessageType {
@@ -118,22 +136,26 @@ impl TryFrom<u8> for MessageType {
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::ReaderStatus;
 
     macro_rules! test_message_type {
         ($msg:expr, $value:expr, $command:expr) => {{
-            let mut buf = vec![];
-            assert!($msg.write_to(&mut buf).is_ok());
-            assert_eq!(vec![$value], buf);
-
             assert_eq!($value as u8, $msg.into());
             assert_eq!($msg, MessageType::try_from($value as u8).unwrap());
             assert_eq!($command, $msg.is_command());
 
-            let mut reader = MessageType::reader();
-            let input = &mut ::std::io::Cursor::new(vec![$value]);
+            {
+                let (buf, result) = test_writer!($msg.writer());
 
-            assert_eq!(ReaderStatus::Complete($msg), reader.resume(input).unwrap());
+                assert!(result.is_ok());
+                assert_eq!(vec![$value], buf);
+            }
+
+            {
+                let result = test_reader!(MessageType::reader(), vec![$value]);
+
+                assert!(result.is_ok());
+                assert_eq!($msg, result.unwrap());
+            }
         }};
     }
 

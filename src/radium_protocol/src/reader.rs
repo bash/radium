@@ -1,16 +1,14 @@
 use std::io;
 use std::io::ErrorKind;
-use std::marker::PhantomData;
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ReaderStatus<T> {
     Pending,
-    Complete(T)
+    Complete(T),
 }
 
-// TODO: implement HasReader for all Messages, ErrorCode, ...
 pub trait HasReader: Sized {
-    type Reader: Reader<Self>;
+    type Reader: Reader<Output=Self>;
 
     fn reader() -> Self::Reader;
 }
@@ -25,9 +23,10 @@ pub trait HasReader: Sized {
 /// [`Reader`]: ./trait.Reader.html
 /// [`ReaderStatus::Pending`]: ./enum.ReaderStatus.html
 #[derive(Debug)]
-pub struct ReaderController<T, R> where R: Reader<T> {
+pub struct ReaderController<R>
+    where R: Reader
+{
     inner: R,
-    _marker: PhantomData<T>,
 }
 
 /// tl;dr - A `SyncReaderController` is used with blocking I/O.
@@ -38,9 +37,10 @@ pub struct ReaderController<T, R> where R: Reader<T> {
 /// [`Reader`]: ./trait.Reader.html
 /// [`ReaderController`]: ./struct.ReaderController.html
 #[derive(Debug)]
-pub struct SyncReaderController<T, R> where R: Reader<T> {
+pub struct SyncReaderController<R>
+    where R: Reader
+{
     inner: R,
-    _marker: PhantomData<T>,
 }
 
 /// A `Reader` is a resumable parser that eventually emits a value of type `T`.
@@ -50,19 +50,23 @@ pub struct SyncReaderController<T, R> where R: Reader<T> {
 /// this is the job of the [`ReaderController`].
 ///
 /// [`ReaderController`]: ./struct.ReaderController.html
-pub trait Reader<T> {
+pub trait Reader {
+    type Output;
+
     /// Resumes the reader with the given input
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<T>> where I: io::Read;
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<Self::Output>> where I: io::Read;
 
     /// Rewinds the reader to its initial state
     fn rewind(&mut self);
 }
 
 impl<T> ReaderStatus<T> {
-    pub fn map<F, R>(self, map_fn: F) -> ReaderStatus<R> where F: FnOnce(T) -> R {
+    pub fn map<F, R>(self, map_fn: F) -> ReaderStatus<R>
+        where F: FnOnce(T) -> R
+    {
         match self {
             ReaderStatus::Pending => ReaderStatus::Pending,
-            ReaderStatus::Complete(value) => ReaderStatus::Complete(map_fn(value))
+            ReaderStatus::Complete(value) => ReaderStatus::Complete(map_fn(value)),
         }
     }
 }
@@ -72,42 +76,56 @@ impl<T> ReaderStatus<T> {
 ///
 /// [`Reader<T>`]: ./trait.Reader.html
 /// [`ReaderController`]: ./struct.ReaderController.html
-impl<T, R> ReaderController<T, R> where R: Reader<T> {
+impl<R> ReaderController<R>
+    where R: Reader
+{
     pub fn new(inner: R) -> Self {
-        ReaderController { inner, _marker: PhantomData {} }
+        ReaderController { inner }
     }
 
     /// Resumes with the given input
-    pub fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<T>> where I: io::Read {
+    pub fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<R::Output>>
+        where I: io::Read
+    {
         match self.inner.resume(input) {
-            Ok(status) => match status {
-                ReaderStatus::Complete(val) => Ok(ReaderStatus::Complete(val)),
-                ReaderStatus::Pending => self.resume(input)
-            },
-            Err(err) => match err.kind() {
-                ErrorKind::WouldBlock => Ok(ReaderStatus::Pending),
-                _ => {
-                    self.inner.rewind();
-                    Err(err)
+            Ok(status) => {
+                match status {
+                    ReaderStatus::Complete(val) => Ok(ReaderStatus::Complete(val)),
+                    ReaderStatus::Pending => self.resume(input),
                 }
-            },
+            }
+            Err(err) => {
+                match err.kind() {
+                    ErrorKind::WouldBlock => Ok(ReaderStatus::Pending),
+                    _ => {
+                        self.inner.rewind();
+                        Err(err)
+                    }
+                }
+            }
         }
     }
 }
 
-impl<T, R> SyncReaderController<T, R> where R: Reader<T> {
+impl<R> SyncReaderController<R>
+    where R: Reader
+{
     pub fn new(inner: R) -> Self {
-        SyncReaderController { inner, _marker: PhantomData {} }
+        SyncReaderController { inner }
     }
 
     /// Resumes with the given input
-    pub fn resume<I>(&mut self, input: &mut I) -> io::Result<T> where I: io::Read {
+    pub fn resume<I>(&mut self, input: &mut I) -> io::Result<R::Output>
+        where I: io::Read
+    {
         loop {
             match self.inner.resume(input) {
-                Ok(status) => match status {
-                    ReaderStatus::Complete(value) => { return Ok(value) }
-                    ReaderStatus::Pending => {}
-                },
+                Ok(status) => {
+                    match status {
+                        ReaderStatus::Complete(value) => return Ok(value),
+                        ReaderStatus::Pending => {}
+                    }
+                }
                 Err(err) => {
                     self.inner.rewind();
                     return Err(err);

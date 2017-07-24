@@ -1,7 +1,8 @@
 use std::io;
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
-use super::super::{WriteTo, WriteResult, Reader, ReaderStatus, MessageInner, Message};
-use ReaderStatus::{Pending, Complete};
+use super::super::{WriteTo, WriteResult, MessageInner, Message};
+use super::super::reader::{Reader, ReaderStatus, HasReader};
+use super::super::reader::ReaderStatus::{Pending, Complete};
 
 /// ts: i64 | id: u16
 #[derive(Debug, Eq, PartialEq, Clone)]
@@ -26,10 +27,6 @@ impl EntryAdded {
         EntryAdded { timestamp, id }
     }
 
-    pub fn reader() -> EntryAddedReader {
-        EntryAddedReader { state: ReaderState::Timestamp }
-    }
-
     pub fn timestamp(&self) -> i64 {
         self.timestamp
     }
@@ -45,6 +42,14 @@ impl MessageInner for EntryAdded {
     }
 }
 
+impl HasReader for EntryAdded {
+    type Reader = EntryAddedReader;
+
+    fn reader() -> Self::Reader {
+        EntryAddedReader { state: ReaderState::Timestamp }
+    }
+}
+
 impl WriteTo for EntryAdded {
     fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
         target.write_i64::<NetworkEndian>(self.timestamp)?;
@@ -54,8 +59,12 @@ impl WriteTo for EntryAdded {
     }
 }
 
-impl Reader<EntryAdded> for EntryAddedReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<EntryAdded>> where I: io::Read {
+impl Reader for EntryAddedReader {
+    type Output = EntryAdded;
+
+    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<Self::Output>>
+        where I: io::Read
+    {
         let (state, status) = match self.state {
             ReaderState::Timestamp => {
                 let timestamp = input.read_i64::<NetworkEndian>()?;
@@ -108,7 +117,7 @@ mod test {
             /* id  */ 0, 23,
         ];
 
-        let result = test_reader2!(EntryAdded::reader(), input);
+        let result = test_reader!(EntryAdded::reader(), input);
 
         assert!(result.is_ok());
         assert_eq!(EntryAdded::new(12345, 23), result.unwrap());

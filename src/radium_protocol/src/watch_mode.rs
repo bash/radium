@@ -1,7 +1,8 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, NetworkEndian};
 use std::io;
 use super::errors::InvalidValueError;
-use super::{WriteTo, WriteResult, Reader, ReaderStatus};
+use super::reader::{Reader, ReaderStatus, HasReader};
+use super::writer::{Writer, WriterStatus, HasWriter};
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 /// The `WatchMode` indicates whether the client wants to be notified about
@@ -12,18 +13,30 @@ pub enum WatchMode {
     /// The client will receive notifications for all tags
     All,
     /// The client will receive notifications only for one tag
-    Tagged(u64)
+    Tagged(u64),
 }
 
 #[derive(Debug)]
-enum WatchModeReaderState {
+enum ReaderState {
     Mode,
-    Tag
+    Tag,
+}
+
+#[derive(Debug)]
+enum WriterState {
+    Mode,
+    Tag,
 }
 
 #[derive(Debug)]
 pub struct WatchModeReader {
-    state: WatchModeReaderState
+    state: ReaderState,
+}
+
+#[derive(Debug)]
+pub struct WatchModeWriter {
+    state: WriterState,
+    value: WatchMode,
 }
 
 impl WatchMode {
@@ -34,30 +47,58 @@ impl WatchMode {
             &WatchMode::Tagged(val) => val == tag,
         }
     }
+}
 
-    pub fn reader() -> WatchModeReader {
-        WatchModeReader { state: WatchModeReaderState::Mode }
+impl HasReader for WatchMode {
+    type Reader = WatchModeReader;
+
+    fn reader() -> Self::Reader {
+        WatchModeReader { state: ReaderState::Mode }
     }
 }
 
-impl Reader<WatchMode> for WatchModeReader {
-    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<WatchMode>> where R: io::Read {
+impl HasWriter for WatchMode {
+    type Writer = WatchModeWriter;
+
+    fn writer(self) -> Self::Writer {
+        WatchModeWriter::new(self)
+    }
+}
+
+impl ReaderState {
+    pub fn initial() -> Self {
+        ReaderState::Mode
+    }
+}
+
+impl WriterState {
+    pub fn initial() -> Self {
+        WriterState::Mode
+    }
+}
+
+impl Reader for WatchModeReader {
+    type Output = WatchMode;
+
+    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Self::Output>>
+        where R: io::Read
+    {
         let (state, status) = match self.state {
-            WatchModeReaderState::Mode => {
+            ReaderState::Mode => {
                 let mode = input.read_u8()?;
 
                 match mode {
-                    0 => (WatchModeReaderState::Mode, ReaderStatus::Complete(WatchMode::None)),
-                    1 => (WatchModeReaderState::Mode, ReaderStatus::Complete(WatchMode::All)),
-                    2 => (WatchModeReaderState::Tag, ReaderStatus::Pending),
-                    _ => { return Err(InvalidValueError::new()) }
+                    0 => (ReaderState::initial(), ReaderStatus::Complete(WatchMode::None)),
+                    1 => (ReaderState::initial(), ReaderStatus::Complete(WatchMode::All)),
+                    2 => (ReaderState::Tag, ReaderStatus::Pending),
+                    _ => return Err(InvalidValueError::new()),
                 }
-            },
-            WatchModeReaderState::Tag => {
+            }
+            ReaderState::Tag => {
                 let tag = input.read_u64::<NetworkEndian>()?;
 
-                (WatchModeReaderState::Mode, ReaderStatus::Complete(WatchMode::Tagged(tag)))
-            },
+                (ReaderState::initial(), ReaderStatus::Complete(WatchMode::Tagged(tag)))
+            }
         };
 
         self.state = state;
@@ -66,25 +107,48 @@ impl Reader<WatchMode> for WatchModeReader {
     }
 
     fn rewind(&mut self) {
-        self.state = WatchModeReaderState::Mode;
+        self.state = ReaderState::Mode;
     }
 }
 
-impl WriteTo for WatchMode {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
-        let mode = match self {
-            &WatchMode::None => 0,
-            &WatchMode::All => 1,
-            &WatchMode::Tagged(..) => 2,
+impl WatchModeWriter {
+    pub fn new(value: WatchMode) -> WatchModeWriter {
+        WatchModeWriter { state: WriterState::initial(), value }
+    }
+}
+
+impl Writer for WatchModeWriter {
+    fn resume<O>(&mut self, output: &mut O) -> io::Result<WriterStatus>
+        where O: io::Write
+    {
+        let (state, status) = match self.state {
+            WriterState::Mode => {
+                let (next, status, mode) = match self.value {
+                    WatchMode::None => (WriterState::initial(), WriterStatus::Complete, 0),
+                    WatchMode::All => (WriterState::initial(), WriterStatus::Complete, 1),
+                    WatchMode::Tagged(..) => (WriterState::Tag, WriterStatus::Pending, 2),
+                };
+
+                output.write_u8(mode)?;
+
+                (next, status)
+            }
+            WriterState::Tag => {
+                if let WatchMode::Tagged(tag) = self.value {
+                    output.write_u64::<NetworkEndian>(tag)?;
+                }
+
+                (WriterState::initial(), WriterStatus::Complete)
+            }
         };
 
-        target.write_u8(mode)?;
+        self.state = state;
 
-        if let &WatchMode::Tagged(tag) = self {
-            target.write_u64::<NetworkEndian>(tag)?;
-        }
+        Ok(status)
+    }
 
-        Ok(())
+    fn rewind(&mut self) {
+        self.state = WriterState::initial();
     }
 }
 
@@ -93,17 +157,35 @@ mod test {
     use super::*;
 
     macro_rules! test_watch_mode {
-        ($test:ident, $mode:expr, $raw:expr) => {
-            #[test]
-            fn $test() {
-                let mut buf = vec![];
-                assert!($mode.write_to(&mut buf).is_ok());
-                assert_eq!($raw, &mut buf.as_ref());
+        ($mode:expr, $raw:expr) => {
+            {
+                let result = test_reader!(WatchMode::reader(), $raw);
+
+                assert!(result.is_ok());
+                assert_eq!($mode, result.unwrap());
+            }
+
+            {
+                let (buf, result) = test_writer!($mode.writer());
+
+                assert!(result.is_ok());
+                assert_eq!($raw, buf);
             }
         }
     }
 
-    test_watch_mode!(test_none, WatchMode::None, &mut [0]);
-    test_watch_mode!(test_all, WatchMode::All, &mut [1]);
-    test_watch_mode!(test_tagged, WatchMode::Tagged(42), &mut [2, 0, 0, 0, 0, 0, 0, 0, 42]);
+    #[test]
+    fn test_none() {
+        test_watch_mode!(WatchMode::None, vec![0]);
+    }
+
+    #[test]
+    fn test_all() {
+        test_watch_mode!(WatchMode::All, vec![1]);
+    }
+
+    #[test]
+    fn test_tagged() {
+        test_watch_mode!(WatchMode::Tagged(42), vec![2, 0, 0, 0, 0, 0, 0, 0, 42]);
+    }
 }
