@@ -1,9 +1,9 @@
-use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::thread;
-use std::time::Duration;
 use std::time::Instant;
+use std::time::Duration;
 use super::entry::{Entry, EntryId};
 use super::storage::Storage;
+use super::sync::Receiver;
 
 ///
 /// Minimum duration between expiration checks in seconds
@@ -11,9 +11,9 @@ use super::storage::Storage;
 const CHECK_INTERVAL: u64 = 1;
 
 ///
-/// Receive timeout for incoming messages in milliseconds
+/// Duration of sleep between loop turns (in milliseconds)
 ///
-const RECV_TIMEOUT: u64 = 500;
+const SLEEP_DURATION: u64 = 100;
 
 pub trait Listener<T: Send + 'static>: Send {
     fn on_expired(&self, entry: Vec<Entry<T>>);
@@ -59,15 +59,13 @@ impl<T: Send + 'static> Worker<T> {
     }
 
     pub fn run(mut self) {
+        let sleep_dur = Duration::from_millis(SLEEP_DURATION);
+        // TODO: is this additional check really necessary?
         self.check_expired();
 
         loop {
-            let incoming = self.receiver
-                .recv_timeout(Duration::from_millis(RECV_TIMEOUT));
-
-            match incoming {
-                Err(err) => self.handle_error(err),
-                Ok(command) => self.handle_command(command),
+            if self.receiver.has_incoming() {
+                self.handle_incoming();
             }
 
             if self.needs_checking() {
@@ -76,13 +74,18 @@ impl<T: Send + 'static> Worker<T> {
 
                 self.check_expired();
             }
+
+            thread::sleep(sleep_dur);
         }
     }
 
-    fn handle_error(&self, err: RecvTimeoutError) {
-        match err {
-            RecvTimeoutError::Timeout => {}
-            RecvTimeoutError::Disconnected => panic!("channel disconnected"),
+    fn handle_incoming(&mut self) {
+        let incoming = self.receiver.recv();
+
+        match incoming {
+            // TODO: Error handling
+            Err(_) => { panic!("channel disconnected") }
+            Ok(command) => { self.handle_command(command) }
         }
     }
 

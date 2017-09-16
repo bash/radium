@@ -1,10 +1,9 @@
-use std::sync::mpsc;
-use std::sync::mpsc::{Sender, Receiver, SendError};
 use std::thread;
 
 use super::storage::Storage;
 use super::entry::{Entry, EntryId};
 use super::worker::{Command, Listener, spawn_worker};
+use super::sync::{channel, Sender, Receiver, SendError};
 
 // TODO: convert to own error type
 pub type CommandResult<T> = Result<(), SendError<Command<T>>>;
@@ -27,7 +26,7 @@ impl<T: Send + 'static> Frontend<T> {
     }
 
     pub fn build(listener: Box<Listener<T>>) -> (Self, thread::JoinHandle<()>) {
-        let (tx, rx): (Sender<Command<T>>, Receiver<Command<T>>) = mpsc::channel();
+        let (tx, rx): (Sender<Command<T>>, Receiver<Command<T>>) = channel();
         let storage = Storage::new();
         let handle = spawn_worker(storage, rx, listener);
 

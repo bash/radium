@@ -5,6 +5,7 @@ mod entry;
 mod frontend;
 mod storage;
 mod worker;
+mod sync;
 
 pub use entry::*;
 pub use frontend::*;
