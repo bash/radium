@@ -1,6 +1,6 @@
 use std::io;
 use std::thread;
-use libradium::Frontend;
+use libradium::Core;
 use mio_channel::{channel, Sender, SendError};
 use mio::{Poll, Ready, PollOpt};
 use mio::unix::UnixReady;
@@ -8,7 +8,7 @@ use super::connection::Connection;
 use super::entry::{Entry, EntryData};
 use super::worker::{Worker, WorkerMessage, MESSAGE_TOKEN};
 
-pub fn spawn_worker(id: usize, frontend: Frontend<EntryData>) -> io::Result<Sender<WorkerMessage>> {
+pub fn spawn_worker(id: usize, frontend: Core<EntryData>) -> io::Result<Sender<WorkerMessage>> {
     let (sender, receiver) = channel::<WorkerMessage>();
 
     let poll = Poll::new()?;
@@ -30,7 +30,7 @@ pub struct Pool {
 }
 
 impl Pool {
-    pub fn build(frontend: Frontend<EntryData>, num_workers: usize) -> Pool {
+    pub fn build(frontend: Core<EntryData>, num_workers: usize) -> Pool {
         // TODO: don't unwrap here
         let workers = (0..num_workers)
             .map(|i| spawn_worker(i, frontend.clone()).unwrap())

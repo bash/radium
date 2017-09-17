@@ -2,11 +2,12 @@ extern crate rand;
 pub extern crate time;
 
 mod entry;
-mod frontend;
+mod core;
 mod storage;
 mod worker;
+mod sync;
+mod command;
 
 pub use entry::*;
-pub use frontend::*;
-pub use storage::*;
-pub use worker::*;
+pub use core::*;
+pub use worker::Listener;

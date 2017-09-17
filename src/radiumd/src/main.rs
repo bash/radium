@@ -18,7 +18,7 @@ mod entry;
 mod worker;
 
 use getopts::Options;
-use libradium::{Frontend, Listener};
+use libradium::{Core, Listener};
 use logger::Logger;
 use mio_channel::{channel, Sender};
 use mio::tcp::TcpListener;
@@ -70,12 +70,12 @@ fn main() {
     // TODO: cli flags --host, --port, --verbose
 
     let (sender, receiver) = channel();
-    let (frontend, _) = Frontend::build(Box::new(EntryListener { sender }));
+    let core = Core::spawn(EntryListener { sender });
 
     Logger::init().unwrap();
 
     // TODO: use cores instead of hardcoded value
-    let pool = Pool::build(frontend, 4);
+    let pool = Pool::build(core, 4);
     let mut server: Server = Server::new(tcp, receiver, pool).unwrap();
 
     server.run().unwrap();

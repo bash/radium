@@ -2,7 +2,7 @@ use std::io;
 use std::error::Error;
 use std::fmt;
 
-use libradium::Frontend;
+use libradium::Core;
 use mio_channel::Receiver;
 use mio::{Poll, Token, Ready, PollOpt, Events, Event};
 use mio::unix::UnixReady;
@@ -37,7 +37,7 @@ pub struct Worker {
     connections: Connections,
     poll: Poll,
     receiver: Receiver<WorkerMessage>,
-    frontend: Frontend<EntryData>,
+    frontend: Core<EntryData>,
 }
 
 impl fmt::Display for WorkerError {
@@ -83,7 +83,7 @@ impl From<WriteError> for WorkerError {
 }
 
 impl Worker {
-    pub fn new(id: usize, poll: Poll, receiver: Receiver<WorkerMessage>, frontend: Frontend<EntryData>) -> Self {
+    pub fn new(id: usize, poll: Poll, receiver: Receiver<WorkerMessage>, frontend: Core<EntryData>) -> Self {
         let connections = env_var!("RADIUM_WORKER_CONNECTIONS", DEFAULT_WORKER_CONNECTIONS);
 
         Worker {
