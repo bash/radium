@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::fmt;
-use libradium::{Frontend, Entry, EntryId, CommandError};
+use libradium::{Core, Entry, EntryId, CommandError};
 use radium_protocol::{Message, ErrorCode};
 use radium_protocol::messages::{SetWatchMode, AddEntry, EntryAdded, RemoveEntry, ErrorMessage};
 use super::connection::Connection;
@@ -16,7 +16,7 @@ pub enum ActionError {
 pub type ActionResult = Result<Message, ActionError>;
 
 pub trait Action {
-    fn process(self, conn: &mut Connection, frontend: &mut Frontend<EntryData>) -> ActionResult;
+    fn process(self, conn: &mut Connection, frontend: &mut Core<EntryData>) -> ActionResult;
 }
 
 impl From<CommandError> for ActionError {
@@ -58,14 +58,14 @@ impl Error for ActionError {
 }
 
 impl Action for SetWatchMode {
-    fn process(self, conn: &mut Connection, _: &mut Frontend<EntryData>) -> ActionResult {
+    fn process(self, conn: &mut Connection, _: &mut Core<EntryData>) -> ActionResult {
         conn.set_watch_mode(self.mode());
         Ok(Message::Ok)
     }
 }
 
 impl Action for AddEntry {
-    fn process(self, _: &mut Connection, frontend: &mut Frontend<EntryData>) -> ActionResult {
+    fn process(self, _: &mut Connection, frontend: &mut Core<EntryData>) -> ActionResult {
         let id = EntryId::gen(self.timestamp());
         let entry = Entry::new(id, EntryData::new(self.tag(), self.consume_data()));
 
@@ -76,7 +76,7 @@ impl Action for AddEntry {
 }
 
 impl Action for RemoveEntry {
-    fn process(self, _: &mut Connection, frontend: &mut Frontend<EntryData>) -> ActionResult {
+    fn process(self, _: &mut Connection, frontend: &mut Core<EntryData>) -> ActionResult {
         let id = EntryId::new(self.timestamp(), self.id());
 
         frontend.remove_entry(id)?;
@@ -86,7 +86,7 @@ impl Action for RemoveEntry {
 }
 
 impl Action for Message {
-    fn process(self, conn: &mut Connection, frontend: &mut Frontend<EntryData>) -> ActionResult {
+    fn process(self, conn: &mut Connection, frontend: &mut Core<EntryData>) -> ActionResult {
         if !self.is_command() {
             return Err(ActionError::NotACommand);
         }

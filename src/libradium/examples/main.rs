@@ -5,7 +5,7 @@ use std::io::prelude::*;
 use std::io;
 use std::sync::mpsc::{Sender, Receiver};
 
-use libradium::{Entry, Timestamp, Frontend};
+use libradium::{Entry, Timestamp, Core};
 
 type Data = ();
 type Entries<T> = Vec<Entry<T>>;
@@ -24,7 +24,7 @@ fn main() {
     let (tx_listener, rx_listener): (Sender<Entries<Data>>, Receiver<Entries<Data>>) =
         mpsc::channel();
     let listener = Box::new(Listener { tx: tx_listener });
-    let (frontend, _) = Frontend::build(listener);
+    let (frontend, _) = Core::build(listener);
 
     let now = Timestamp::now();
 

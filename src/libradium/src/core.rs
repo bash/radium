@@ -42,27 +42,27 @@ impl error::Error for CommandError {
     }
 }
 
-pub struct Frontend<T> where T: Send + 'static {
+pub struct Core<T> where T: Send + 'static {
     tx: Sender<Command<T>>,
     join_handle: Arc<thread::JoinHandle<()>>,
 }
 
-impl<T> Clone for Frontend<T> where T: Send + 'static {
+impl<T> Clone for Core<T> where T: Send + 'static {
     fn clone(&self) -> Self {
-        Frontend {
+        Core {
             tx: self.tx.clone(),
             join_handle: self.join_handle.clone(),
         }
     }
 }
 
-impl<T> Frontend<T> where T: Send + 'static {
+impl<T> Core<T> where T: Send + 'static {
     pub fn spawn<L>(listener: L) -> Self where L: Listener<T> + 'static {
         let (tx, rx): (Sender<Command<T>>, Receiver<Command<T>>) = channel();
         let storage = Storage::new();
         let join_handle = spawn_worker(storage, rx, Box::new(listener));
 
-        Frontend {
+        Core {
             tx,
             join_handle: Arc::new(join_handle),
         }
