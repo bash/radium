@@ -17,8 +17,6 @@ const SLEEP_DURATION: u64 = 100;
 
 pub trait Listener<T: Send + 'static>: Send {
     fn on_expired(&self, entry: Vec<Entry<T>>);
-    #[cfg(feature = "with-ticks")]
-    fn on_tick(&self) {}
 }
 
 #[derive(Debug)]
@@ -75,8 +73,6 @@ impl<T: Send + 'static> Worker<T> {
             if self.needs_checking() {
                 should_sleep = false;
 
-                #[cfg(feature = "with-ticks")] self.listener.on_tick();
-
                 self.check_expired();
             }
 
@@ -90,7 +86,6 @@ impl<T: Send + 'static> Worker<T> {
         let incoming = self.receiver.recv();
 
         match incoming {
-            // TODO: Error handling
             Err(_) => panic!("channel disconnected"),
             Ok(command) => self.handle_command(command),
         }
