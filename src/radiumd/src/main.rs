@@ -70,7 +70,7 @@ fn main() {
     // TODO: cli flags --host, --port, --verbose
 
     let (sender, receiver) = channel();
-    let (frontend, _) = Frontend::build(Box::new(EntryListener { sender }));
+    let frontend = Frontend::spawn(EntryListener { sender });
 
     Logger::init().unwrap();
 

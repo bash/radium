@@ -1,6 +1,6 @@
 use std::error::Error;
 use std::fmt;
-use libradium::{Frontend, Entry, EntryId, Command, SendError};
+use libradium::{Frontend, Entry, EntryId, CommandError};
 use radium_protocol::{Message, ErrorCode};
 use radium_protocol::messages::{SetWatchMode, AddEntry, EntryAdded, RemoveEntry, ErrorMessage};
 use super::connection::Connection;
@@ -19,8 +19,8 @@ pub trait Action {
     fn process(self, conn: &mut Connection, frontend: &mut Frontend<EntryData>) -> ActionResult;
 }
 
-impl From<SendError<Command<EntryData>>> for ActionError {
-    fn from(_: SendError<Command<EntryData>>) -> Self {
+impl From<CommandError> for ActionError {
+    fn from(_: CommandError) -> Self {
         ActionError::FrontendError
     }
 }

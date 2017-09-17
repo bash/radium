@@ -1,47 +1,82 @@
 use std::thread;
+use std::error;
+use std::fmt;
+use std::sync::Arc;
 
 use super::storage::Storage;
 use super::entry::{Entry, EntryId};
-use super::worker::{Command, Listener, spawn_worker};
+use super::command::{Command};
+use super::worker::{Listener, spawn_worker};
 use super::sync::{channel, Sender, Receiver, SendError};
 
-// TODO: convert to own error type
-pub type CommandResult<T> = Result<(), SendError<Command<T>>>;
+pub type CommandResult = Result<(), CommandError>;
 
-pub struct Frontend<T: Send + 'static> {
-    tx: Sender<Command<T>>,
+#[derive(Debug)]
+pub enum CommandError {
+    SendError,
+    #[doc(hidden)]
+    __NonExhaustive,
 }
 
-impl<T: Send + 'static> Clone for Frontend<T> {
-    fn clone(&self) -> Self {
-        Frontend {
-            tx: self.tx.clone()
+impl<T> From<SendError<T>> for CommandError {
+    fn from(_: SendError<T>) -> Self {
+        CommandError::SendError
+    }
+}
+
+impl fmt::Display for CommandError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            &CommandError::SendError => write!(f, "{}", "error sending command"),
+            &CommandError::__NonExhaustive => unreachable!(),
         }
     }
 }
 
-impl<T: Send + 'static> Frontend<T> {
-    pub fn new(tx: Sender<Command<T>>) -> Self {
-        Frontend { tx }
+impl error::Error for CommandError {
+    fn description(&self) -> &str {
+        match self {
+            &CommandError::SendError => "error sending command",
+            &CommandError::__NonExhaustive => unreachable!(),
+        }
     }
+}
 
-    pub fn build(listener: Box<Listener<T>>) -> (Self, thread::JoinHandle<()>) {
+pub struct Frontend<T> where T: Send + 'static {
+    tx: Sender<Command<T>>,
+    join_handle: Arc<thread::JoinHandle<()>>,
+}
+
+impl<T> Clone for Frontend<T> where T: Send + 'static {
+    fn clone(&self) -> Self {
+        Frontend {
+            tx: self.tx.clone(),
+            join_handle: self.join_handle.clone(),
+        }
+    }
+}
+
+impl<T> Frontend<T> where T: Send + 'static {
+    pub fn spawn<L>(listener: L) -> Self where L: Listener<T> + 'static {
         let (tx, rx): (Sender<Command<T>>, Receiver<Command<T>>) = channel();
         let storage = Storage::new();
-        let handle = spawn_worker(storage, rx, listener);
+        let join_handle = spawn_worker(storage, rx, Box::new(listener));
 
-        (Self::new(tx), handle)
+        Frontend {
+            tx,
+            join_handle: Arc::new(join_handle),
+        }
     }
 
-    pub fn add_entry(&self, entry: Entry<T>) -> CommandResult<T> {
+    pub fn add_entry(&self, entry: Entry<T>) -> CommandResult {
         self.command(Command::AddEntry(entry))
     }
 
-    pub fn remove_entry(&self, id: EntryId) -> CommandResult<T> {
+    pub fn remove_entry(&self, id: EntryId) -> CommandResult {
         self.command(Command::RemoveEntry(id))
     }
 
-    fn command(&self, command: Command<T>) -> CommandResult<T> {
-        self.tx.send(command)
+    fn command(&self, command: Command<T>) -> CommandResult {
+        Ok(self.tx.send(command)?)
     }
 }

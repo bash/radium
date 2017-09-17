@@ -1,9 +1,10 @@
 use std::thread;
 use std::time::Instant;
 use std::time::Duration;
-use super::entry::{Entry, EntryId};
+use super::entry::Entry;
 use super::storage::Storage;
 use super::sync::Receiver;
+use super::command::Command;
 
 ///
 /// Minimum duration between expiration checks in seconds
@@ -17,12 +18,6 @@ const SLEEP_DURATION: u64 = 100;
 
 pub trait Listener<T: Send + 'static>: Send {
     fn on_expired(&self, entry: Vec<Entry<T>>);
-}
-
-#[derive(Debug)]
-pub enum Command<T: Send + 'static> {
-    AddEntry(Entry<T>),
-    RemoveEntry(EntryId),
 }
 
 #[derive(Debug)]
@@ -101,7 +96,7 @@ impl<T: Send + 'static> Worker<T> {
     fn handle_command(&mut self, command: Command<T>) {
         match command {
             Command::AddEntry(entry) => self.storage.add_entry(entry),
-            Command::RemoveEntry(id) => self.storage.remove_entry(id),
+            Command::RemoveEntry(id) => { self.storage.remove_entry(id); }
         }
     }
 
