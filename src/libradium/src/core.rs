@@ -5,7 +5,7 @@ use std::sync::Arc;
 
 use super::storage::Storage;
 use super::entry::{Entry, EntryId};
-use super::command::{Command};
+use super::command::Command;
 use super::worker::{Listener, spawn_worker};
 use super::sync::{channel, Sender, Receiver, SendError};
 
@@ -42,12 +42,18 @@ impl error::Error for CommandError {
     }
 }
 
-pub struct Core<T> where T: Send + 'static {
+pub struct Core<T>
+where
+    T: Send + 'static,
+{
     tx: Sender<Command<T>>,
     join_handle: Arc<thread::JoinHandle<()>>,
 }
 
-impl<T> Clone for Core<T> where T: Send + 'static {
+impl<T> Clone for Core<T>
+where
+    T: Send + 'static,
+{
     fn clone(&self) -> Self {
         Core {
             tx: self.tx.clone(),
@@ -56,8 +62,14 @@ impl<T> Clone for Core<T> where T: Send + 'static {
     }
 }
 
-impl<T> Core<T> where T: Send + 'static {
-    pub fn spawn<L>(listener: L) -> Self where L: Listener<T> + 'static {
+impl<T> Core<T>
+where
+    T: Send + 'static,
+{
+    pub fn spawn<L>(listener: L) -> Self
+    where
+        L: Listener<T> + 'static,
+    {
         let (tx, rx): (Sender<Command<T>>, Receiver<Command<T>>) = channel();
         let storage = Storage::new();
         let join_handle = spawn_worker(storage, rx, Box::new(listener));

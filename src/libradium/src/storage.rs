@@ -44,7 +44,7 @@ impl<T: Send + 'static> Storage<T> {
             // the item we're trying to remove actually exists
             entries.push(self.remove_entry(id).unwrap());
         }
-        
+
         entries
     }
 }

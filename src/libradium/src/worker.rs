@@ -96,7 +96,9 @@ impl<T: Send + 'static> Worker<T> {
     fn handle_command(&mut self, command: Command<T>) {
         match command {
             Command::AddEntry(entry) => self.storage.add_entry(entry),
-            Command::RemoveEntry(id) => { self.storage.remove_entry(id); }
+            Command::RemoveEntry(id) => {
+                self.storage.remove_entry(id);
+            }
         }
     }
 
