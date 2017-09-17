@@ -25,6 +25,13 @@ pub enum Command<T: Send + 'static> {
     RemoveEntry(EntryId),
 }
 
+#[derive(Debug)]
+enum Action {
+    ReceiveCommand,
+    CheckExpired,
+    Sleep,
+}
+
 pub struct Worker<T: Send + 'static> {
     storage: Storage<T>,
     receiver: Receiver<Command<T>>,
@@ -62,24 +69,24 @@ impl<T: Send + 'static> Worker<T> {
         let sleep_dur = Duration::from_millis(SLEEP_DURATION);
 
         loop {
-            let mut should_sleep = true;
-
-            if self.receiver.has_incoming() {
-                should_sleep = false;
-
-                self.handle_incoming();
-            }
-
-            if self.needs_checking() {
-                should_sleep = false;
-
-                self.check_expired();
-            }
-
-            if should_sleep {
-                thread::sleep(sleep_dur);
+            match self.determine_action() {
+                Action::ReceiveCommand => self.handle_incoming(),
+                Action::CheckExpired => self.check_expired(),
+                Action::Sleep => thread::sleep(sleep_dur),
             }
         }
+    }
+
+    fn determine_action(&self) -> Action {
+        if self.receiver.has_incoming() {
+            return Action::ReceiveCommand;
+        }
+
+        if self.needs_checking() {
+            return Action::CheckExpired;
+        }
+
+        Action::Sleep
     }
 
     fn handle_incoming(&mut self) {
@@ -93,12 +100,8 @@ impl<T: Send + 'static> Worker<T> {
 
     fn handle_command(&mut self, command: Command<T>) {
         match command {
-            Command::AddEntry(entry) => {
-                self.storage.add_entry(entry);
-            }
-            Command::RemoveEntry(id) => {
-                self.storage.remove_entry(id);
-            }
+            Command::AddEntry(entry) => self.storage.add_entry(entry),
+            Command::RemoveEntry(id) => self.storage.remove_entry(id),
         }
     }
 
