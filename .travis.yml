@@ -7,3 +7,4 @@ before_script:
 - which rustfmt || cargo install rustfmt
 script:
 - sh .travis/script.sh
+- cargo test

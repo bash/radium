@@ -23,15 +23,15 @@ impl libradium::Listener<Data> for Listener {
 fn main() {
     let (tx_listener, rx_listener): (Sender<Entries<Data>>, Receiver<Entries<Data>>) =
         mpsc::channel();
-    let listener = Box::new(Listener { tx: tx_listener });
-    let (frontend, _) = Core::build(listener);
+    let listener = Listener { tx: tx_listener };
+    let core = Core::spawn(listener);
 
     let now = Timestamp::now();
 
     for i in 0..100 {
-        frontend.add_entry(Entry::gen(now + (i * 10), ())).unwrap();
+        core.add_entry(Entry::gen(now + (i * 10), ())).unwrap();
 
-        frontend
+        core
             .add_entry(Entry::gen(now + (i * 10) + 1, ()))
             .unwrap();
     }
