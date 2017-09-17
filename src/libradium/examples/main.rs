@@ -31,9 +31,7 @@ fn main() {
     for i in 0..100 {
         core.add_entry(Entry::gen(now + (i * 10), ())).unwrap();
 
-        core
-            .add_entry(Entry::gen(now + (i * 10) + 1, ()))
-            .unwrap();
+        core.add_entry(Entry::gen(now + (i * 10) + 1, ())).unwrap();
     }
 
     loop {

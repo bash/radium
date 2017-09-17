@@ -1,8 +1,9 @@
-use byteorder::{WriteBytesExt, ReadBytesExt};
 use std::convert::TryFrom;
-use std::io;
+use std::fmt;
 use super::errors::TryFromError;
-use super::{ReadResult, WriteResult, ReadFrom, WriteTo, Reader, ReaderStatus};
+use serde::{Serialize, Deserialize, Serializer, Deserializer};
+use serde::de::{self, Visitor};
+use std::u8;
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
 pub enum ErrorCode {
@@ -20,13 +21,7 @@ pub enum ErrorCode {
     ConnectionFailure,
 }
 
-pub struct ErrorCodeReader;
-
-impl ErrorCode {
-    pub fn reader() -> ErrorCodeReader {
-        ErrorCodeReader {}
-    }
-}
+struct ErrorCodeVisitor;
 
 impl Into<u8> for ErrorCode {
     fn into(self) -> u8 {
@@ -55,42 +50,78 @@ impl TryFrom<u8> for ErrorCode {
     }
 }
 
-impl ReadFrom for ErrorCode {
-    fn read_from<R: io::Read>(source: &mut R) -> ReadResult<Self> {
-        let value = source.read_u8()?;
-
-        Ok(ErrorCode::try_from(value)?)
+impl Serialize for ErrorCode {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_u8((*self).into())
     }
 }
 
-impl WriteTo for ErrorCode {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
-        target.write_u8((*self).into())?;
-        Ok(())
+impl<'de> Visitor<'de> for ErrorCodeVisitor {
+    type Value = ErrorCode;
+
+    fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+        formatter.write_str("an integer between 0 and 4")
+    }
+
+    fn visit_i64<E>(self, value: i64) -> Result<ErrorCode, E>
+    where
+        E: de::Error,
+    {
+        if value >= u8::MIN as i64 && value <= u8::MAX as i64 {
+            match ErrorCode::try_from(value as u8) {
+                Ok(code) => Ok(code),
+                Err(_) => Err(E::custom(format!("invalid value: {}", value))),
+            }
+        } else {
+            Err(E::custom(format!("invalid value: {}", value)))
+        }
+    }
+
+    fn visit_u64<E>(self, value: u64) -> Result<ErrorCode, E>
+    where
+        E: de::Error,
+    {
+        if value >= u8::MIN as u64 && value <= u8::MAX as u64 {
+            match ErrorCode::try_from(value as u8) {
+                Ok(code) => Ok(code),
+                Err(_) => Err(E::custom(format!("invalid value: {}", value))),
+            }
+        } else {
+            Err(E::custom(format!("invalid value: {}", value)))
+        }
     }
 }
 
-impl Reader<ErrorCode> for ErrorCodeReader {
-    fn resume<I>(&mut self, input: &mut I) -> io::Result<ReaderStatus<ErrorCode>> where I: io::Read {
-        let value = input.read_u8()?;
-        let code = ErrorCode::try_from(value)?;
-
-        Ok(ReaderStatus::Complete(code))
+impl<'de> Deserialize<'de> for ErrorCode {
+    fn deserialize<D>(deserializer: D) -> Result<ErrorCode, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_u8(ErrorCodeVisitor)
     }
-
-    fn rewind(&mut self) {}
 }
+
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use serde_json;
 
     #[test]
-    pub fn test_reader () {
-        let vec = vec![0];
-        let result = test_reader2!(ErrorCode::reader(), vec);
+    pub fn test_serialize() {
+        let code = ErrorCode::ActionProcessingError;
+        let serialized = serde_json::to_string(&code);
 
-        assert!(result.is_ok());
-        assert_eq!(ErrorCode::ClientRejected, result.unwrap());
+        assert_eq!("3".to_string(), serialized.unwrap());
+    }
+
+    #[test]
+    pub fn test_deserialize() {
+        let deserialized = serde_json::from_str("3");
+
+        assert_eq!(ErrorCode::ActionProcessingError, deserialized.unwrap());
     }
 }

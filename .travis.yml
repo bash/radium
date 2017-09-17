@@ -6,5 +6,5 @@ before_script:
 - export PATH="$PATH:$HOME/.cargo/bin"
 - which rustfmt || cargo install rustfmt
 script:
-- sh .travis/script.sh
+- cargo fmt --all -- --write-mode=diff
 - cargo test

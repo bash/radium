@@ -4,4 +4,9 @@ version = "0.1.0"
 authors = ["Ruben Schmidmeister <ruben.schmidmeister@icloud.com>"]
 
 [dependencies]
-byteorder = "1"
+serde = "1.0"
+serde_derive = "1.0"
+serde_json = "1.0"
+
+[[example]]
+name = "main"

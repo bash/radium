@@ -3,7 +3,7 @@ use libradium;
 #[derive(Clone, Debug)]
 pub struct EntryData {
     tag: u64,
-    data: Vec<u8>
+    data: Vec<u8>,
 }
 
 pub type Entry = libradium::Entry<EntryData>;
