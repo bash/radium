@@ -1,227 +1,37 @@
-use std::io;
-use byteorder::WriteBytesExt;
-use super::{MessageType, WriteTo, WriteResult, ReaderStatus, Reader, HasReader};
-use super::messages::{
-    AddEntry, AddEntryReader,
-    EntryAdded, EntryAddedReader,
-    SetWatchMode, SetWatchModeReader,
-    ErrorMessage, ErrorMessageReader,
-    EntryExpired, EntryExpiredReader,
-    RemoveEntry, RemoveEntryReader,
-};
+use super::error_code::ErrorCode;
+use super::watch_mode::WatchMode;
 
-macro_rules! msg_reader {
-    ($reader: expr, $input: expr) => {
-        match $reader.resume($input)? {
-            ReaderStatus::Pending => (None, ReaderStatus::Pending),
-            ReaderStatus::Complete(inner) => {
-                let msg = inner.wrap();
-
-                (Some(ReaderState::Type), ReaderStatus::Complete(msg))
-            },
-        }
-    }
-}
-
-macro_rules! into_msg_reader {
-    ($variant: ident) => {
-        into_msg_reader!($variant, $variant)
-    };
-    ($variant: ident, $msg: ident) => {
-        (Some(ReaderState::$variant($msg::reader())), ReaderStatus::Pending)
-    };
-}
-
-macro_rules! empty_msg {
-    ($variant: ident) => {
-        (Some(ReaderState::Type), ReaderStatus::Complete(Message::$variant))
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Clone)]
-pub enum Message {
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+#[serde(rename_all = "snake_case")]
+pub enum Message<'a> {
+    // TODO: determine if ping/pong is still required
     Ping,
+    AddEntry { timestamp: i64, tag: &'a str, data: &'a str },
+    RemoveEntry { timestamp: i64, id: u16 },
+    SetWatchMode { mode: WatchMode<'a> },
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum ServerMessage<'a> {
+    // TODO: determine if ping/pong is still required
     Pong,
-    AddEntry(AddEntry),
-    EntryAdded(EntryAdded),
-    RemoveEntry(RemoveEntry),
-    // `EntryRemoved` should also contain the entry's data. However, this requires changing
-    // libradium, because the frontend does not block when adding or removing entries.
-    // until then, we use Ok as confirmation
-    #[doc(hidden)]
-    EntryRemoved,
-    EntryExpired(EntryExpired),
-    SetWatchMode(SetWatchMode),
-    Ok,
-    Error(ErrorMessage),
-}
-
-#[derive(Debug)]
-enum ReaderState {
-    Type,
-    Message(MessageType),
-    SetWatchMode(SetWatchModeReader),
-    ErrorMessage(ErrorMessageReader),
-    AddEntry(AddEntryReader),
-    EntryAdded(EntryAddedReader),
-    RemoveEntry(RemoveEntryReader),
-    EntryExpired(EntryExpiredReader),
-}
-
-#[derive(Debug)]
-pub struct MessageReader {
-    state: ReaderState
-}
-
-pub trait MessageInner {
-    /// Wraps the inner message inside its corresponding `Message` variant
-    fn wrap(self) -> Message;
-}
-
-impl Message {
-    pub fn message_type(&self) -> MessageType {
-        match self {
-            &Message::Ping => MessageType::Ping,
-            &Message::Pong => MessageType::Pong,
-            &Message::AddEntry(..) => MessageType::AddEntry,
-            &Message::EntryAdded(..) => MessageType::EntryAdded,
-            &Message::RemoveEntry(..) => MessageType::RemoveEntry,
-            &Message::EntryRemoved => MessageType::EntryRemoved,
-            &Message::EntryExpired(..) => MessageType::EntryExpired,
-            &Message::SetWatchMode(..) => MessageType::SetWatchMode,
-            &Message::Ok => MessageType::Ok,
-            &Message::Error(..) => MessageType::Error,
-        }
-    }
-
-    /// Determines if the message is a command that is handled by the server
-    pub fn is_command(&self) -> bool {
-        self.message_type().is_command()
-    }
-
-    pub fn reader() -> MessageReader {
-        MessageReader { state: ReaderState::Type }
-    }
-}
-
-impl Reader<Message> for MessageReader {
-    fn resume<R>(&mut self, input: &mut R) -> io::Result<ReaderStatus<Message>> where R: io::Read {
-        let (state, status) = match self.state {
-            ReaderState::Type => {
-                #[allow(unreachable_patterns)]
-                let state = match MessageType::reader().resume(input)? {
-                    ReaderStatus::Pending => unreachable!(),
-                    ReaderStatus::Complete(val) => Some(ReaderState::Message(val))
-                };
-
-                (state, ReaderStatus::Pending)
-            },
-            ReaderState::Message(msg_type) => {
-                #[allow(unreachable_patterns)]
-                match msg_type {
-                    MessageType::Ping => empty_msg!(Ping),
-                    MessageType::Pong => empty_msg!(Pong),
-                    MessageType::EntryRemoved => empty_msg!(EntryRemoved),
-                    MessageType::Ok => empty_msg!(Ok),
-                    MessageType::SetWatchMode => into_msg_reader!(SetWatchMode),
-                    MessageType::AddEntry => into_msg_reader!(AddEntry),
-                    MessageType::Error => into_msg_reader!(ErrorMessage),
-                    MessageType::EntryAdded => into_msg_reader!(EntryAdded),
-                    MessageType::RemoveEntry => into_msg_reader!(RemoveEntry),
-                    // TODO: implement EntryRemoved
-                    MessageType::EntryRemoved => unreachable!(),
-                    MessageType::EntryExpired => into_msg_reader!(EntryExpired),
-                }
-            },
-            ReaderState::SetWatchMode(ref mut reader) => msg_reader!(reader, input),
-            ReaderState::AddEntry(ref mut reader) => msg_reader!(reader, input),
-            ReaderState::ErrorMessage(ref mut reader) => msg_reader!(reader, input),
-            ReaderState::EntryAdded(ref mut reader) => msg_reader!(reader, input),
-            ReaderState::RemoveEntry(ref mut reader) => msg_reader!(reader, input),
-            ReaderState::EntryExpired(ref mut reader) => msg_reader!(reader, input),
-        };
-
-        if let Some(state) = state {
-            self.state = state;
-        }
-
-        Ok(status)
-    }
-
-    fn rewind(&mut self) {
-        self.state = ReaderState::Type;
-    }
-}
-
-impl WriteTo for Message {
-    fn write_to<W: io::Write>(&self, target: &mut W) -> WriteResult {
-        target.write_u8(self.message_type().into())?;
-
-        match self {
-            &Message::Ping => Ok(()),
-            &Message::Pong => Ok(()),
-            &Message::AddEntry(ref msg) => msg.write_to(target),
-            &Message::EntryAdded(ref msg) => msg.write_to(target),
-            &Message::RemoveEntry(ref msg) => msg.write_to(target),
-            &Message::EntryRemoved => Ok(()),
-            &Message::EntryExpired(ref msg) => msg.write_to(target),
-            &Message::SetWatchMode(ref msg) => msg.write_to(target),
-            &Message::Ok => Ok(()),
-            &Message::Error(ref msg) => msg.write_to(target),
-        }
-    }
+    EntryAdded { timestamp: i64, id: u16 },
+    EntryExpired { timestamp: i64, tag: &'a str, data: &'a str },
+    Ok { message: Message<'a> },
+    Error { message: Message<'a>, error: ErrorCode },
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use super::super::{WatchMode, ErrorCode};
-    use super::super::messages::SetWatchMode;
+    use serde_json;
 
-    macro_rules! test_message {
-        ($test:ident, $ty:ident) => {
-            test_message!($test, Message::$ty, MessageType::$ty);
-        };
-        ($test:ident, $msg:expr, $ty:expr) => {
-            #[test]
-            fn $test() {
-                let msg = $msg;
+    #[test]
+    fn test_serialize() {
+        let serialized = serde_json::to_string(&Message::Ping);
 
-                assert_eq!($ty, msg.message_type());
-
-                let mut vec = Vec::new();
-                assert!(msg.write_to(&mut vec).is_ok());
-                assert_eq!(msg.message_type().to_u8(), vec[0]);
-            }
-        };
+        assert_eq!("{\"type\":\"ping\"}", serialized.unwrap());
     }
-
-    test_message!(test_ping, Ping);
-    test_message!(test_pong, Pong);
-
-    test_message!(test_add_entry,
-                  Message::AddEntry(AddEntry::new(0, 0, vec![])),
-                  MessageType::AddEntry);
-
-    test_message!(test_entry_added,
-                  Message::EntryAdded(EntryAdded::new(0, 0)),
-                  MessageType::EntryAdded);
-
-    test_message!(test_remove_entry,
-                  Message::RemoveEntry(RemoveEntry::new(0, 0)),
-                  MessageType::RemoveEntry);
-
-    test_message!(test_entry_removed, EntryRemoved);
-
-    test_message!(test_entry_expired,
-                  Message::EntryExpired(EntryExpired::new(0, 7, 12, vec![])),
-                  MessageType::EntryExpired);
-
-    test_message!(test_ok, Ok);
-
-    test_message!(test_set_watch_mode,
-                  Message::SetWatchMode(SetWatchMode::new(WatchMode::None)),
-                  MessageType::SetWatchMode);
-
-    test_message!(test_error, Message::Error(ErrorMessage::new(ErrorCode::ClientRejected)), MessageType::Error);
 }
