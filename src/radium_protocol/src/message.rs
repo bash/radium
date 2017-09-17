@@ -7,7 +7,11 @@ use super::watch_mode::WatchMode;
 pub enum Message<'a> {
     // TODO: determine if ping/pong is still required
     Ping,
-    AddEntry { timestamp: i64, tag: &'a str, data: &'a str },
+    AddEntry {
+        timestamp: i64,
+        tag: &'a str,
+        data: &'a str,
+    },
     RemoveEntry { timestamp: i64, id: u16 },
     SetWatchMode { mode: WatchMode<'a> },
 }
@@ -18,9 +22,16 @@ pub enum ServerMessage<'a> {
     // TODO: determine if ping/pong is still required
     Pong,
     EntryAdded { timestamp: i64, id: u16 },
-    EntryExpired { timestamp: i64, tag: &'a str, data: &'a str },
+    EntryExpired {
+        timestamp: i64,
+        tag: &'a str,
+        data: &'a str,
+    },
     Ok { message: Message<'a> },
-    Error { message: Message<'a>, error: ErrorCode },
+    Error {
+        message: Message<'a>,
+        error: ErrorCode,
+    },
 }
 
 #[cfg(test)]

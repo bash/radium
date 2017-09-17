@@ -51,6 +51,9 @@ mod test {
 
     #[test]
     fn test_tagged() {
-        test_watch_mode!(WatchMode::Tagged { tag: "foo" }, "{\"type\":\"tagged\",\"tag\":\"foo\"}");
+        test_watch_mode!(
+            WatchMode::Tagged { tag: "foo" },
+            "{\"type\":\"tagged\",\"tag\":\"foo\"}"
+        );
     }
 }

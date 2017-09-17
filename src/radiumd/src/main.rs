@@ -18,7 +18,7 @@ use std::sync::mpsc::{Sender, channel};
 use self::entry::{Entry, EntryData};
 
 struct EntryListener {
-    sender: Sender<Vec<Entry>>
+    sender: Sender<Vec<Entry>>,
 }
 
 impl Listener<EntryData> for EntryListener {

@@ -52,7 +52,8 @@ impl TryFrom<u8> for ErrorCode {
 
 impl Serialize for ErrorCode {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where S: Serializer
+    where
+        S: Serializer,
     {
         serializer.serialize_u8((*self).into())
     }
@@ -66,12 +67,13 @@ impl<'de> Visitor<'de> for ErrorCodeVisitor {
     }
 
     fn visit_i64<E>(self, value: i64) -> Result<ErrorCode, E>
-        where E: de::Error
+    where
+        E: de::Error,
     {
         if value >= u8::MIN as i64 && value <= u8::MAX as i64 {
             match ErrorCode::try_from(value as u8) {
                 Ok(code) => Ok(code),
-                Err(_) => Err(E::custom(format!("invalid value: {}", value)))
+                Err(_) => Err(E::custom(format!("invalid value: {}", value))),
             }
         } else {
             Err(E::custom(format!("invalid value: {}", value)))
@@ -79,12 +81,13 @@ impl<'de> Visitor<'de> for ErrorCodeVisitor {
     }
 
     fn visit_u64<E>(self, value: u64) -> Result<ErrorCode, E>
-        where E: de::Error
+    where
+        E: de::Error,
     {
         if value >= u8::MIN as u64 && value <= u8::MAX as u64 {
             match ErrorCode::try_from(value as u8) {
                 Ok(code) => Ok(code),
-                Err(_) => Err(E::custom(format!("invalid value: {}", value)))
+                Err(_) => Err(E::custom(format!("invalid value: {}", value))),
             }
         } else {
             Err(E::custom(format!("invalid value: {}", value)))
@@ -94,7 +97,8 @@ impl<'de> Visitor<'de> for ErrorCodeVisitor {
 
 impl<'de> Deserialize<'de> for ErrorCode {
     fn deserialize<D>(deserializer: D) -> Result<ErrorCode, D::Error>
-        where D: Deserializer<'de>
+    where
+        D: Deserializer<'de>,
     {
         deserializer.deserialize_u8(ErrorCodeVisitor)
     }

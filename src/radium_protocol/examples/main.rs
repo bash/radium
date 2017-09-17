@@ -11,7 +11,10 @@ fn main() {
     }
 
     {
-        let message = ServerMessage::Error { message: Message::Ping, error: ErrorCode::ConnectionFailure };
+        let message = ServerMessage::Error {
+            message: Message::Ping,
+            error: ErrorCode::ConnectionFailure,
+        };
         let serialized = serde_json::to_string(&message).unwrap();
         println!("{}", serialized);
     }
