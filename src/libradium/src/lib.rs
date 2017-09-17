@@ -11,3 +11,4 @@ pub use entry::*;
 pub use frontend::*;
 pub use storage::*;
 pub use worker::*;
+pub use sync::SendError;

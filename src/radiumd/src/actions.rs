@@ -1,7 +1,6 @@
 use std::error::Error;
 use std::fmt;
-use std::sync::mpsc::SendError;
-use libradium::{Frontend, Entry, EntryId, Command};
+use libradium::{Frontend, Entry, EntryId, Command, SendError};
 use radium_protocol::{Message, ErrorCode};
 use radium_protocol::messages::{SetWatchMode, AddEntry, EntryAdded, RemoveEntry, ErrorMessage};
 use super::connection::Connection;
